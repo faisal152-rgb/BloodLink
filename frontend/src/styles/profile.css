@@ -1,0 +1,16 @@
+/* User Profile Styling */
+.user-profile {
+  background: #f8f9fa;
+  min-height: 80vh;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 3rem;
+  align-items: start;
+}
+
+@media (max-width: 992px) {
+  .profile-grid { grid-template-columns: 1fr; }
+}

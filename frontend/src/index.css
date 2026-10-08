@@ -1,0 +1,243 @@
+:root {
+  /* Modern Professional Color Palette */
+  --primary-red: #dc3545;
+  --primary-red-hover: #c82333;
+  --primary-blue: #007bff;
+  --primary-blue-hover: #0069d9;
+
+  --bg-color: #ffffff;
+  --white: #ffffff;
+  --dark-text: #212529;
+  --secondary-text: #6c757d;
+  --border-color: #dee2e6;
+  --success: #28a745;
+  --warning: #ffc107;
+
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-premium: 0 20px 40px rgba(0, 0, 0, 0.08);
+
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --glass-blur: blur(10px);
+
+  --font-main: 'Outfit', sans-serif;
+  --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg-color);
+  color: var(--dark-text);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: var(--transition-fast);
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: var(--transition-smooth);
+}
+
+/* Base Layout */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-red {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
+  }
+
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+  }
+}
+
+/* Modern Input Styling */
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--white);
+  font-family: inherit;
+  font-size: 1rem;
+  transition: var(--transition-fast);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--primary-red);
+  box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.1);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-red);
+}
+
+/* Page Header Section */
+.page-header {
+  text-align: center;
+  padding: 10rem 0 6rem;
+  background: var(--white);
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.decoration-blob {
+  position: absolute;
+  z-index: 0;
+  filter: blur(60px);
+  border-radius: 50%;
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.blob-1 {
+  width: 300px;
+  height: 300px;
+  background: var(--primary-red);
+  top: -100px;
+  right: -50px;
+  animation: float 10s ease-in-out infinite;
+}
+
+.blob-2 {
+  width: 200px;
+  height: 200px;
+  background: var(--primary-blue);
+  bottom: -50px;
+  left: -50px;
+  animation: float 12s ease-in-out infinite reverse;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-20px) rotate(5deg);
+  }
+
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+}
+
+.page-title {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  color: var(--dark-text);
+  margin-bottom: 1.5rem;
+  background: linear-gradient(135deg, #212529 0%, #444 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.1;
+}
+
+.page-subtitle {
+  font-size: 1.25rem;
+  color: var(--secondary-text);
+  max-width: 700px;
+  margin: 0 auto 1rem;
+  line-height: 1.6;
+}
+
+.page-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(220, 53, 69, 0.1);
+  color: var(--primary-red);
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(220, 53, 69, 0.2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.section {
+  padding: 6rem 0;
+}
+
+.bg-light {
+  background-color: var(--bg-color);
+}
