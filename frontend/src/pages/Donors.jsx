@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, MapPin, CheckCircle2, Clock, Activity } from 'lucide-react';
-import '../styles/donors.css';
+import '../styles/Donors.css';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 const CITIES = ['Bahawalpur', 'Lahore', 'Karachi', 'Islamabad', 'Multan', 'Faisalabad', 'Peshawar'];
