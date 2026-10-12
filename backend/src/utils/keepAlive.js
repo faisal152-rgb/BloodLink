@@ -1,10 +1,10 @@
 
-const startKeepAlive = () => {
 
-    const url = process.env.RENDER_EXTERNAL_URL || process.env.SERVER_URL;
+const startKeepAlive = () => {
+    const url = process.env.SERVER_URL;
 
     if (!url) {
-        console.log('ℹ️  Keep-Alive: No SERVER_URL or RENDER_EXTERNAL_URL set. (Self-ping will activate when deployed on Render or when SERVER_URL is provided)');
+        console.log('ℹ️  Keep-Alive: No SERVER_URL set.');
         return;
     }
 
