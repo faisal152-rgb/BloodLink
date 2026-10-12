@@ -6,8 +6,8 @@ const transporter = nodemailer.createTransport({
   auth: {
     type: 'OAuth2',
     user: process.env.GOOGLE_USER,
-    clientId: process.env.CLIENT_ID,
-    clientSecret: process.env.CLIENT_SECRET,
+    clientId: process.env.CLIENT_ID || process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET,
     refreshToken: process.env.REFRESH_TOKEN,
   },
 });
@@ -25,7 +25,7 @@ transporter.verify((error, success) => {
 const sendEmail = async (to, subject, text, html) => {
   try {
     const info = await transporter.sendMail({
-      from: `"Faisal Abbas" <${process.env.GOOGLE_USER}>`, // sender address
+      from: `"BloodLink" <${process.env.GOOGLE_USER}>`, // sender address
       to, // list of receivers
       subject, // Subject line
       text, // plain text body
