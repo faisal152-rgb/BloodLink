@@ -27,9 +27,9 @@ const XIcon = () => (
 );
 
 const OAUTH_PROVIDERS = [
-  { id: 'google',   label: 'Continue with Google',   icon: GoogleIcon,   class: 'oauth-btn-google',   url: 'http://localhost:5000/api/auth/google' },
-  { id: 'facebook', label: 'Continue with Facebook', icon: FacebookIcon, class: 'oauth-btn-facebook', url: 'http://localhost:5000/api/auth/facebook' },
-  { id: 'twitter',  label: 'Continue with X',        icon: XIcon,        class: 'oauth-btn-twitter',  url: 'http://localhost:5000/api/auth/twitter' },
+  { id: 'google',   label: 'Continue with Google',   icon: GoogleIcon,   class: 'oauth-btn-google',   url: `${api.API_BASE_URL}/auth/google` },
+  { id: 'facebook', label: 'Continue with Facebook', icon: FacebookIcon, class: 'oauth-btn-facebook', url: `${api.API_BASE_URL}/auth/facebook` },
+  { id: 'twitter',  label: 'Continue with X',        icon: XIcon,        class: 'oauth-btn-twitter',  url: `${api.API_BASE_URL}/auth/twitter` },
 ];
 
 const ROLES = [
