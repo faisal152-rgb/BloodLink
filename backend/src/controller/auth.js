@@ -237,8 +237,8 @@ async function userLogout(req, res) {
   await session.save();
   res.cookie("refreshtoken", "", {
     httpOnly: true,
-    secure: true,
-    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     maxAge: 0,
   });
   return res.status(200).json({
@@ -397,7 +397,7 @@ async function refreshtoken(req, res) {
     res.cookie("refreshtoken", newRefreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
