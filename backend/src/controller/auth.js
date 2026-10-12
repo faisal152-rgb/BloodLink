@@ -60,6 +60,8 @@ async function Register(req, res) {
     message: "User already exists",
     status: "Fail",
   });
+  const role = requestedRole || resolveRoleFromEmail(email);
+  const user = await User.create({ name, email, password, role, provider: 'local' });
   try {
     const otp = generateOtp();
     await redis.del(`otp:${email}`);
@@ -88,8 +90,6 @@ async function Register(req, res) {
       Status: "Fail",
     });
   }
-  const role = requestedRole || resolveRoleFromEmail(email);
-  const user = await User.create({ name, email, password, role, provider: 'local' });
   return res.status(201).json({
     Message: "Registration Successfull",
     Status: "Success",
