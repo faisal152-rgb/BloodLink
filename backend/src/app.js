@@ -5,11 +5,12 @@ const dotenv = require('dotenv');
 const path = require('path');
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 const session = require('express-session');
+const { RedisStore } = require('connect-redis');
+const redisClient = require('./config/redis');
 const cookieParser = require('cookie-parser');
 const passport = require('./services/passport');
 const connectDB = require('./config/db');
 const startKeepAlive = require('./utils/keepAlive');
-// Redis client auto-connects when required by route controllers
 // Models
 const User = require('./models/User');
 const Donor = require('./models/Donor');
@@ -61,8 +62,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// ─── Session (required for OAuth redirect flow) ───────────────────────────────
+// ─── Session (backed by Redis) ────────────────────────────────────────────────
 app.use(session({
+  store: new RedisStore({ client: redisClient, prefix: 'sess:' }),
   secret: process.env.JWT_SECRET || 'bloodlink_session_secret',
   resave: false,
   saveUninitialized: false,
