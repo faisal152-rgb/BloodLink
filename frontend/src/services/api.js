@@ -138,4 +138,7 @@ export const getCurrentUser = () => api.get('/auth/me');
 export const getInventory = () => api.get('/inventory');
 export const updateInventory = (group, units) => api.put(`/inventory/${group}`, { units });
 
+// Social Links (from backend)
+export const getSocialLinks = () => api.get('/social-links');
+
 export default api;
