@@ -63,6 +63,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_ID !== 'YOUR_GOOGL
         avatar: profile.photos?.[0]?.value,
         provider: 'google',
         role,
+        Verified: true,
       });
       return done(null, user);
     } catch (err) {
@@ -107,6 +108,7 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_ID !== 'YOUR_FACEBOO
         avatar: profile.photos?.[0]?.value,
         provider: 'facebook',
         role,
+        Verified: true,
       });
       return done(null, user);
     } catch (err) {
@@ -151,6 +153,7 @@ if (process.env.TWITTER_CONSUMER_KEY && process.env.TWITTER_CONSUMER_KEY !== 'YO
         avatar: profile.photos?.[0]?.value,
         provider: 'twitter',
         role,
+        Verified: true,
       });
       return done(null, user);
     } catch (err) {
