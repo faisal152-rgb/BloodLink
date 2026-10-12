@@ -8,6 +8,7 @@ const session = require('express-session');
 const cookieParser = require('cookie-parser');
 const passport = require('./services/passport');
 const connectDB = require('./config/db');
+const startKeepAlive = require('./utils/keepAlive');
 // Redis client auto-connects when required by route controllers
 // Models
 const User = require('./models/User');
@@ -102,12 +103,11 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/inventory', inventoryRoutes);
 
 
-// ─── Health Check ─────────────────────────────────────────────────────────────
+// ─── Health Check & Keep-Alive ──────────────────────────────────────────────
 app.get('/', (req, res) => res.status(200).json({ message: 'Bloodlink API is running' }));
 
-// ─── Start Database ─────────────────────────────────────────────────────────────
-connectDB()
-
-
+// ─── Start Database & Services ──────────────────────────────────────────────
+connectDB();
+startKeepAlive();
 
 module.exports ={app};
