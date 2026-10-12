@@ -125,6 +125,17 @@ app.use('/inventory', inventoryRoutes);
 // ─── Health Check & Keep-Alive ──────────────────────────────────────────────
 app.get('/', (req, res) => res.status(200).json({ message: 'Bloodlink API is running' }));
 
+// ─── Dynamic Social Links API ───────────────────────────────────────────────
+app.get('/api/social-links', (req, res) => {
+  res.status(200).json({
+    whatsapp: process.env.WHATSAPP_LINK,
+    facebook: process.env.FACEBOOK_LINK,
+    instagram: process.env.INSTAGRAM_LINK,
+    twitter: process.env.TWITTER_LINK,
+  });
+});
+app.get('/social-links', (req, res) => res.redirect('/api/social-links'));
+
 // ─── Start Database & Services ──────────────────────────────────────────────
 connectDB();
 startKeepAlive();
