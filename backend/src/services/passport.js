@@ -35,7 +35,8 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_ID !== 'YOUR_GOOGL
   passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: '/auth/google/callback',
+    callbackURL: process.env.GOOGLE_CALLBACK_URL || '/api/auth/google/callback',
+    proxy: true,
   }, async (accessToken, refreshToken, profile, done) => {
     try {
       const email = profile.emails?.[0]?.value;
@@ -77,7 +78,8 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_ID !== 'YOUR_FACEBOO
   passport.use(new FacebookStrategy({
     clientID: process.env.FACEBOOK_APP_ID,
     clientSecret: process.env.FACEBOOK_APP_SECRET,
-    callbackURL: '/auth/facebook/callback',
+    callbackURL: process.env.FACEBOOK_CALLBACK_URL || '/api/auth/facebook/callback',
+    proxy: true,
     profileFields: ['id', 'displayName', 'emails', 'photos'],
   }, async (accessToken, refreshToken, profile, done) => {
     try {
@@ -120,7 +122,8 @@ if (process.env.TWITTER_CONSUMER_KEY && process.env.TWITTER_CONSUMER_KEY !== 'YO
   passport.use(new TwitterStrategy({
     consumerKey: process.env.TWITTER_CONSUMER_KEY,
     consumerSecret: process.env.TWITTER_CONSUMER_SECRET,
-    callbackURL: '/auth/twitter/callback',
+    callbackURL: process.env.TWITTER_CALLBACK_URL || '/api/auth/twitter/callback',
+    proxy: true,
     includeEmail: true,
   }, async (token, tokenSecret, profile, done) => {
     try {
