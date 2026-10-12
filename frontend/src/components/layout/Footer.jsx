@@ -1,4 +1,6 @@
+import React, { useState, useEffect } from 'react';
 import { Droplet, MapPin, Mail, Phone } from 'lucide-react';
+import { getSocialLinks } from '../../services/api';
 
 const BrandIcons = {
   Whatsapp: (props) => (
@@ -23,100 +25,143 @@ const BrandIcons = {
   )
 };
 
-const socialLinks = [
-  {
-    icon: BrandIcons.Whatsapp,
-    url: import.meta.env.VITE_WHATSAPP_LINK || '',
-    label: 'WhatsApp',
-    color: '#25D366'
-  },
-  {
-    icon: BrandIcons.Facebook,
-    url: import.meta.env.VITE_FACEBOOK_LINK || '',
-    label: 'Facebook',
-    color: '#1877F2'
-  },
-  {
-    icon: BrandIcons.Instagram,
-    url: import.meta.env.VITE_INSTAGRAM_LINK || '',
-    label: 'Instagram',
-    color: '#C13584'
-  },
-  {
-    icon: BrandIcons.Twitter,
-    url: import.meta.env.VITE_TWITTER_LINK || '',
-    label: 'X (Twitter)',
-    color: '#000000'
-  }
-];
+const Footer = ({ onAdminClick, onNavItemClick }) => {
+  const [links, setLinks] = useState({
+    whatsapp: 'https://wa.me/923001234567',
+    facebook: 'https://facebook.com/bloodlink',
+    instagram: 'https://instagram.com/bloodlink',
+    twitter: 'https://twitter.com/bloodlink',
+  });
 
-const Footer = ({ onAdminClick, onNavItemClick }) => (
-  <footer className="app-footer">
-    <div className="container">
-      <div className="footer-grid">
-        <div>
-          <div className="footer-logo">
-            <Droplet fill="#dc3545" size={40} />
-            BloodLink
+  useEffect(() => {
+    getSocialLinks()
+      .then(res => {
+        if (res?.data) {
+          setLinks(prev => ({ ...prev, ...res.data }));
+        }
+      })
+      .catch((err) => {
+        console.debug('Using local social links fallback:', err?.message);
+      });
+  }, []);
+
+  const socialLinks = [
+    {
+      icon: BrandIcons.Whatsapp,
+      url: links.whatsapp,
+      label: 'WhatsApp',
+      color: '#25D366'
+    },
+    {
+      icon: BrandIcons.Facebook,
+      url: links.facebook,
+      label: 'Facebook',
+      color: '#1877F2'
+    },
+    {
+      icon: BrandIcons.Instagram,
+      url: links.instagram,
+      label: 'Instagram',
+      color: '#C13584'
+    },
+    {
+      icon: BrandIcons.Twitter,
+      url: links.twitter,
+      label: 'X (Twitter)',
+      color: '#000000'
+    }
+  ];
+
+  return (
+    <footer className="app-footer">
+      <div className="container">
+        <div className="footer-grid">
+          <div>
+            <div className="footer-logo">
+              <Droplet fill="#dc3545" size={40} />
+              BloodLink
+            </div>
+            <p className="footer-text">
+              A centralized platform for verified blood donation. Bridging the gap between recipients and donors ethically and efficiently.
+            </p>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              {socialLinks.map((social, idx) => (
+                <a
+                  key={idx}
+                  href={social.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={social.label}
+                  className="social-icon-btn"
+                  style={{
+                    color: '#666',
+                    background: '#2a2a2a',
+                    padding: '10px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = '#fff';
+                    e.currentTarget.style.background = social.color;
+                    e.currentTarget.style.transform = 'translateY(-3px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = '#666';
+                    e.currentTarget.style.background = '#2a2a2a';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <social.icon style={{ width: '20px', height: '20px' }} />
+                </a>
+              ))}
+            </div>
           </div>
-          <p className="footer-text">
-            A centralized platform for verified blood donation. Bridging the gap between recipients and donors ethically and efficiently.
-          </p>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            {socialLinks.map((social, idx) => (
-              <a
-                key={idx}
-                href={social.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={social.label}
-                className="social-icon-btn"
-                style={{
-                  color: '#666',
-                  background: '#2a2a2a',
-                  padding: '10px',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = '#fff';
-                  e.currentTarget.style.background = social.color;
-                  e.currentTarget.style.transform = 'translateY(-3px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = '#666';
-                  e.currentTarget.style.background = '#2a2a2a';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                <social.icon style={{ width: '20px', height: '20px' }} />
-              </a>
-            ))}
+          <div>
+            <h4 className="footer-col-title">Quick Links</h4>
+            <ul className="footer-links">
+              <li><button onClick={() => onNavItemClick('home')} className="footer-link-btn">Home</button></li>
+              <li><button onClick={() => onNavItemClick('donors')} className="footer-link-btn">Find Donors</button></li>
+              <li><button onClick={() => onNavItemClick('request')} className="footer-link-btn">Request Blood</button></li>
+              <li><button onClick={() => onNavItemClick('inventory')} className="footer-link-btn">Live Inventory</button></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="footer-col-title">Legal & Info</h4>
+            <ul className="footer-links">
+              <li><button onClick={() => onNavItemClick('guidelines')} className="footer-link-btn">Eligibility Guidelines</button></li>
+              <li><button onClick={() => onNavItemClick('privacy')} className="footer-link-btn">Privacy Policy</button></li>
+              <li><button onClick={() => onNavItemClick('terms')} className="footer-link-btn">Terms of Service</button></li>
+              <li><button onClick={() => onNavItemClick('faq')} className="footer-link-btn">FAQ</button></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="footer-col-title">Emergency Contact</h4>
+            <div className="footer-contact-item">
+              <Phone size={16} color="#dc3545" />
+              <span>+92 (300) 123-4567</span>
+            </div>
+            <div className="footer-contact-item">
+              <Mail size={16} color="#dc3545" />
+              <span>emergency@bloodlink.org</span>
+            </div>
+            <div className="footer-contact-item">
+              <MapPin size={16} color="#dc3545" />
+              <span>National Blood Center, Sector H-8, Islamabad</span>
+            </div>
           </div>
         </div>
-        <div>
-          <h4 className="footer-col-title">Quick Links</h4>
-          <ul className="footer-links">
-            <li><a href="/home" onClick={(e) => { e.preventDefault(); onNavItemClick('home'); }}>Home</a></li>
-            <li><a href="/donor" onClick={(e) => { e.preventDefault(); onNavItemClick('donors'); }}>Donor Network</a></li>
-            <li><a href="/request" onClick={(e) => { e.preventDefault(); onNavItemClick('request'); }}>Emergency Request</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="footer-col-title">Contact Support</h4>
-          <ul className="footer-links">
-            <li style={{ display: 'flex', gap: '10px' }}><MapPin size={18} /> IUB, Bahawalpur, Pakistan</li>
-            <li style={{ display: 'flex', gap: '10px' }}><Mail size={18} /> support@bloodlink.org</li>
-            <li style={{ display: 'flex', gap: '10px' }}><Phone size={18} /> +92 (300) 123 4567</li>
-          </ul>
+        <div className="footer-bottom">
+          <p>© {new Date().getFullYear()} BloodLink Pakistan. All rights reserved. A non-profit initiative.</p>
+          <div className="footer-bottom-links">
+            <button onClick={() => onNavItemClick('privacy')} className="footer-bottom-link">Privacy Policy</button>
+            <button onClick={() => onNavItemClick('terms')} className="footer-bottom-link">Terms</button>
+            <button onClick={onAdminClick} className="footer-bottom-link">Admin Portal</button>
+          </div>
         </div>
       </div>
-      <div className="footer-bottom">
-        <p>&copy; 2026 BloodLink Project. Designed for Ethics and Efficiency.</p>
-      </div>
-    </div>
-  </footer>
-);
+    </footer>
+  );
+};
 
 export default Footer;
