@@ -10,15 +10,75 @@ import BloodBankPanel from './pages/BloodBankPanel';
 import Profile from './pages/Profile';
 import * as api from './services/api';
 
+// Helper: Map URL pathname to internal section
+const pathToSection = (path) => {
+  const cleanPath = (path || window.location.pathname).toLowerCase().replace(/\/$/, '') || '/';
+  if (['/login', '/auth', '/register', '/signin'].includes(cleanPath)) return 'auth_login';
+  if (cleanPath === '/request') return 'request';
+  if (['/donor', '/donors'].includes(cleanPath)) return 'donors';
+  if (cleanPath === '/profile') return 'profile';
+  if (['/controlpanel', '/admin', '/dashboard'].includes(cleanPath)) return 'controlpanel';
+  return 'home';
+};
+
+// Helper: Map internal section to URL pathname
+const sectionToPath = (section) => {
+  switch (section) {
+    case 'auth_login': return '/login';
+    case 'request': return '/request';
+    case 'donors': return '/donor';
+    case 'profile': return '/profile';
+    case 'controlpanel': return '/controlpanel';
+    case 'home':
+    default:
+      return '/home';
+  }
+};
+
 function App() {
   const [activeSection, setActiveSection] = useState(() => {
+    // 1. First priority: current URL in the browser
+    const fromUrl = pathToSection(window.location.pathname);
+    if (window.location.pathname !== '/' && window.location.pathname !== '') {
+      return fromUrl;
+    }
+    // 2. Second priority: saved section
     return localStorage.getItem('bloodlinkActiveSection') || 'home';
   });
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userData, setUserData] = useState(null);
   const [donors, setDonors] = useState([]);
 
+  // Check URL pathname and OAuth Callback on mount
   useEffect(() => {
+    // Check for OAuth Callback parameters in URL: /auth/callback?accesstoken=...
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('accesstoken');
+
+    if (token) {
+      const user = {
+        id: urlParams.get('id'),
+        name: urlParams.get('name'),
+        email: urlParams.get('email'),
+        role: urlParams.get('role') || 'donor',
+        avatar: urlParams.get('avatar'),
+        hospitalName: urlParams.get('hospitalName'),
+        phone: urlParams.get('phone'),
+        verified: urlParams.get('verified') === 'true',
+      };
+
+      localStorage.setItem('bloodlinkToken', token);
+      localStorage.setItem('bloodlinkUser', JSON.stringify(user));
+      setIsLoggedIn(true);
+      setUserData(user);
+
+      const target = ['admin', 'hospital', 'bloodbank'].includes(user.role) ? 'controlpanel' : 'profile';
+      navigateTo(target);
+      return;
+    }
+
+    // Existing session check
     const storedUser = localStorage.getItem('bloodlinkUser');
     const storedToken = localStorage.getItem('bloodlinkToken');
     if (storedUser && storedToken) {
@@ -26,23 +86,34 @@ function App() {
       const parsedUser = JSON.parse(storedUser);
       setUserData(parsedUser);
 
-      // preserve current activeSection if already set, otherwise set role-based default
-      if (!localStorage.getItem('bloodlinkActiveSection') || localStorage.getItem('bloodlinkActiveSection') === 'auth_login') {
-        setActiveSection(parsedUser.role === 'donor' ? 'profile' : 'controlpanel');
+      // If user came to root or home while logged in, role-based default
+      const currentSection = pathToSection(window.location.pathname);
+      if (currentSection === 'home' && !localStorage.getItem('bloodlinkActiveSection')) {
+        navigateTo(parsedUser.role === 'donor' ? 'profile' : 'controlpanel');
       }
     }
 
     fetchDonors();
 
-    // Remove hash from URL if it exists (at user request)
-    if (window.location.hash) {
-      window.history.replaceState(null, '', window.location.pathname);
-    }
+    // Listen to browser Back / Forward buttons
+    const handlePopState = () => {
+      const target = pathToSection(window.location.pathname);
+      setActiveSection(target);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('bloodlinkActiveSection', activeSection);
-  }, [activeSection]);
+  // Sync URL and localStorage whenever activeSection changes
+  const navigateTo = (section) => {
+    setActiveSection(section);
+    localStorage.setItem('bloodlinkActiveSection', section);
+
+    const targetPath = sectionToPath(section);
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState(null, '', targetPath);
+    }
+  };
 
   const fetchDonors = async () => {
     try {
@@ -55,12 +126,7 @@ function App() {
   };
 
   const handleNavItemClick = (key) => {
-    setActiveSection(key);
-    
-    // Update URL according to user request (avoiding hashes)
-    if (key === 'home') window.history.pushState(null, '', '/home');
-    else if (key === 'request') window.history.pushState(null, '', '/request');
-    else if (key === 'donors') window.history.pushState(null, '', '/donor');
+    navigateTo(key);
 
     const scrollId = key === 'donors' ? 'donors' : key;
     if (['home', 'donors', 'request'].includes(key)) {
@@ -81,16 +147,16 @@ function App() {
     localStorage.setItem('bloodlinkUser', JSON.stringify(data));
 
     if (['admin', 'hospital', 'bloodbank'].includes(data.role)) {
-      setActiveSection('controlpanel');
+      navigateTo('controlpanel');
     } else {
-      setActiveSection('profile');
+      navigateTo('profile');
     }
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
     setUserData(null);
-    setActiveSection('home');
+    navigateTo('home');
 
     localStorage.removeItem('bloodlinkToken');
     localStorage.removeItem('bloodlinkUser');
@@ -133,7 +199,7 @@ function App() {
         <>
           <Home onFindDonor={handleFindDonor} onRequestBlood={handleRequestBlood} />
           <Donors donors={donors} />
-          <Request isLoggedIn={isLoggedIn} setActiveSection={setActiveSection} />
+          <Request isLoggedIn={isLoggedIn} setActiveSection={navigateTo} />
         </>
       );
     }
@@ -142,7 +208,7 @@ function App() {
       <>
         <Home onFindDonor={handleFindDonor} onRequestBlood={handleRequestBlood} />
         <Donors donors={donors} />
-        <Request isLoggedIn={isLoggedIn} setActiveSection={setActiveSection} />
+        <Request isLoggedIn={isLoggedIn} setActiveSection={navigateTo} />
       </>
     );
   };
@@ -150,12 +216,12 @@ function App() {
   return (
     <Layout
       activeSection={activeSection}
-      setActiveSection={setActiveSection}
+      setActiveSection={navigateTo}
       isLoggedIn={isLoggedIn}
       isAdmin={isLoggedIn}
       onLogout={handleLogout}
       userData={userData}
-      onAdminClick={() => setActiveSection('auth_login')}
+      onAdminClick={() => navigateTo('auth_login')}
       onNavItemClick={handleNavItemClick}
     >
       {renderSection()}
