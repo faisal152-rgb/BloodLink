@@ -84,7 +84,7 @@ const Footer = ({ onAdminClick, onNavItemClick }) => {
             <p className="footer-text">
               A centralized platform for verified blood donation. Bridging the gap between recipients and donors ethically and efficiently.
             </p>
-            <div style={{ display: 'flex', gap: '1rem' }}>
+            <div className="footer-social-wrap">
               {socialLinks.map((social, idx) => (
                 <a
                   key={idx}
