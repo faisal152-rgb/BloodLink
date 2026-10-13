@@ -83,17 +83,13 @@ async function dismissWelcomeNotification(req, res) {
   }
 
   try {
-    const notification = await Notification.findOneAndDelete({
+    await Notification.deleteOne({
       _id: req.params.id,
       recipient: req.user.id || req.user._id,
       type: 'welcome',
     });
 
-    if (!notification) {
-      return res.status(404).json({ success: false, message: 'Welcome notification not found' });
-    }
-
-    return res.status(200).json({ success: true });
+    return res.sendStatus(204);
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
