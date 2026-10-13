@@ -879,6 +879,9 @@ const LocationManagement = () => {
 const NotificationsSystem = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
+  const [sendSuccess, setSendSuccess] = useState('');
   const [notificationText, setNotificationText] = useState('');
   const [notificationTitle, setNotificationTitle] = useState('');
   const [notificationTarget, setNotificationTarget] = useState('all');
@@ -901,21 +904,35 @@ const NotificationsSystem = () => {
   };
 
   const handleSendNotification = async () => {
-    if (notificationText.trim()) {
-      try {
-        const res = await api.sendNotification({
-          title: notificationTitle.trim() || undefined,
-          message: notificationText,
-          target: notificationTarget
-        });
-        const newNotif = res.data;
-        setNotifications([newNotif, ...notifications]);
-        setNotificationText('');
-        setNotificationTitle('');
-        setNotificationTarget('all');
-      } catch (error) {
-        console.error("Error sending notification:", error);
-      }
+    const message = notificationText.trim();
+    setSendError('');
+    setSendSuccess('');
+
+    if (!message) {
+      setSendError('Please enter a notification message.');
+      return;
+    }
+
+    try {
+      setSending(true);
+      const res = await api.sendNotification({
+        title: notificationTitle.trim() || undefined,
+        message,
+        target: notificationTarget
+      });
+      setNotifications(current => [res.data, ...current]);
+      setNotificationText('');
+      setNotificationTitle('');
+      setNotificationTarget('all');
+      setSendSuccess('Notification sent successfully.');
+    } catch (error) {
+      const errorMessage = error.response?.data?.message
+        || error.message
+        || 'Failed to send notification. Please try again.';
+      setSendError(errorMessage);
+      console.error("Error sending notification:", error);
+    } finally {
+      setSending(false);
     }
   };
 
@@ -967,10 +984,19 @@ const NotificationsSystem = () => {
             <option value="donor">🩸 Send to Donors</option>
             <option value="bloodbank">🏦 Send to Blood Banks</option>
           </select>
-          <button className="btn btn-primary" onClick={handleSendNotification} type="button">
-            <Bell size={18} /> Send Notification
+          <button className="btn btn-primary" onClick={handleSendNotification} type="button" disabled={sending}>
+            <Bell size={18} /> {sending ? 'Sending...' : 'Send Notification'}
           </button>
         </div>
+        {(sendError || sendSuccess) && (
+          <p
+            role={sendError ? 'alert' : 'status'}
+            aria-live="polite"
+            style={{ color: sendError ? '#dc3545' : '#198754', marginTop: '0.75rem' }}
+          >
+            {sendError || sendSuccess}
+          </p>
+        )}
       </div>
 
       {/* Notifications List */}
@@ -1024,7 +1050,7 @@ const AdminManagement = ({ onRefreshUserData }) => {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
-  const [newAdmin, setNewAdmin] = useState({ name: '', email: '', role: 'admin' });
+  const [newAdmin, setNewAdmin] = useState({ name: '', email: '', role: 'admin', password: '' });
   const [editingAdmin, setEditingAdmin] = useState(null);
   const [editFormData, setEditFormData] = useState({ name: '', email: '', role: 'admin' });
   const [error, setError] = useState('');
@@ -1076,7 +1102,7 @@ const AdminManagement = ({ onRefreshUserData }) => {
       } else {
         setSuccess('Admin added successfully!');
       }
-      setNewAdmin({ name: '', email: '', role: 'admin' });
+      setNewAdmin({ name: '', email: '', role: 'admin', password: '' });
       setShowAddForm(false);
       await fetchAdmins();
 
@@ -1230,6 +1256,15 @@ const AdminManagement = ({ onRefreshUserData }) => {
               onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
               disabled={submitting}
             />
+            <input
+              type="password"
+              placeholder="Password (required for a new account)"
+              value={newAdmin.password}
+              onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
+              disabled={submitting}
+              autoComplete="new-password"
+            />
+            <small>Leave password blank to assign a role to an existing account.</small>
             <select
               value={newAdmin.role}
               onChange={(e) => setNewAdmin({ ...newAdmin, role: e.target.value })}
@@ -1254,7 +1289,7 @@ const AdminManagement = ({ onRefreshUserData }) => {
                 onClick={() => {
                   setShowAddForm(false);
                   setError('');
-                  setNewAdmin({ name: '', email: '', role: 'admin' });
+                  setNewAdmin({ name: '', email: '', role: 'admin', password: '' });
                 }}
                 disabled={submitting}
               >
