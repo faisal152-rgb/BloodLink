@@ -28,16 +28,15 @@ async function sendVerificationOtp(user) {
       otpHash,
       expiresAt: Date.now() + 10 * 60 * 1000,
     },
-    { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
+    { upsert: true, runValidators: true, setDefaultsOnInsert: true }
   );
-console(otp);
+
   await sendEmail(
     user.email,
     'Verify your BloodLink email',
     `Your BloodLink verification code is ${otp}. It expires in 10 minutes.`,
     getOtpHtml(otp)
   );
-  console(sendEmail);
 }
 
 const CLIENT_URL = process.env.CLIENT_URL
@@ -88,10 +87,38 @@ async function Register(req, res) {
     });
   }
   const userExists = await User.findOne({ email });
-  if (userExists) return res.status(200).json({
-    message: "User already exists",
-    status: "Fail",
-  });
+  if (userExists) {
+    if (userExists.Verified || userExists.provider !== 'local') {
+      return res.status(409).json({
+        message: "An account with this email already exists. Please sign in.",
+        status: "Fail",
+      });
+    }
+
+    const isValidPassword = await userExists.matchPassword(password);
+    if (!isValidPassword) {
+      return res.status(409).json({
+        message: "An account with this email already exists. Please sign in with its password.",
+        status: "Fail",
+      });
+    }
+
+    try {
+      await sendVerificationOtp(userExists);
+      return res.status(200).json({
+        message: "A new verification code was sent to your email.",
+        requireOtp: true,
+        email: userExists.email,
+        status: "Success",
+      });
+    } catch (err) {
+      console.error('Registration OTP resend failed:', err);
+      return res.status(503).json({
+        message: "We couldn't send the verification email. Please try again shortly.",
+        status: "Fail",
+      });
+    }
+  }
   const role = requestedRole || resolveRoleFromEmail(email);
   let user;
   try {
@@ -475,13 +502,13 @@ async function verifyOtp(req, res) {
 }
 
 
-module.exports = { 
-  Login, 
-  Register, 
-  Profile, 
-  updateProfile, 
-  get, 
-  refreshtoken, 
+module.exports = {
+  Login,
+  Register,
+  Profile,
+  updateProfile,
+  get,
+  refreshtoken,
   verifyOtp,
   userLogout,
   sendTokenRedirect
