@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema({
   phone: { type: String },
   Verified: { type: Boolean, default: false },
   welcomeSentAt: { type: Date },
+  welcomeEmailSentAt: { type: Date },
 
   // OAuth Provider IDs
   provider: {
