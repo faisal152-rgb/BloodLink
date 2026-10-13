@@ -95,31 +95,27 @@
 }
 
 .donor-notifications-header .donor-notifications-delete-all {
-  display: inline-flex;
-  width: auto;
+  display: grid;
+  width: 34px;
   height: 34px;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0 0.55rem;
+  place-items: center;
+  padding: 0;
   color: #b42332;
-  background: rgba(220, 53, 69, 0.08);
-  border: 1px solid rgba(180, 35, 50, 0.45);
-  border-radius: 7px;
-  font-size: 0.78rem;
-  font-weight: 600;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
 }
 
 .donor-notifications-header .donor-notifications-delete-all:hover:not(:disabled) {
   color: #8f1724;
-  background: rgba(220, 53, 69, 0.14);
+  background: rgba(220, 53, 69, 0.08);
 }
 
 .donor-notifications-header .donor-notifications-delete-all:disabled {
   cursor: not-allowed;
-  color: #8f1724;
-  background: rgba(220, 53, 69, 0.06);
-  border-color: rgba(180, 35, 50, 0.35);
-  opacity: 1;
+  color: var(--secondary-text);
+  opacity: 0.65;
 }
 
 .donor-notifications-delete-all svg,
@@ -168,22 +164,19 @@
 }
 
 .donor-notifications-delete {
-  display: inline-flex;
-  min-width: 30px;
-  height: 30px;
+  display: grid;
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
+  place-items: center;
   margin: -0.35rem -0.4rem 0 0;
-  padding: 0 0.4rem;
+  padding: 0;
   color: #b42332;
-  background: rgba(220, 53, 69, 0.08);
-  border: 1px solid rgba(180, 35, 50, 0.45);
-  border-radius: 7px;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
   cursor: pointer;
   transition: color 160ms ease, background 160ms ease;
-  font-size: 0.75rem;
 }
 
 .donor-notifications-delete:hover:not(:disabled) {
