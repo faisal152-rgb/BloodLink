@@ -96,7 +96,7 @@ async function deleteNotification(req, res) {
 
   try {
     const userId = req.user.id || req.user._id;
-    const result = await Notification.updateOne(
+    await Notification.updateOne(
       {
         _id: req.params.id,
         $or: [
@@ -109,10 +109,6 @@ async function deleteNotification(req, res) {
       },
       { $addToSet: { dismissedBy: userId } }
     );
-
-    if (!result.matchedCount) {
-      return res.status(404).json({ success: false, message: 'Notification not found' });
-    }
 
     return res.sendStatus(204);
   } catch (error) {
