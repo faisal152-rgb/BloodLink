@@ -1143,7 +1143,7 @@ const AdminManagement = ({ onRefreshUserData }) => {
   };
 
   const handleEditAdmin = (id) => {
-    const admin = admins.find(a => a.id === id);
+    const admin = admins.find(a => (a.id || a._id) === id);
     if (!admin) {
       setError('Admin record not found for edit.');
       return;
@@ -1173,7 +1173,13 @@ const AdminManagement = ({ onRefreshUserData }) => {
 
     try {
       setSubmitting(true);
-      const res = await api.updateAdmin(editingAdmin.id, editFormData);
+      const adminId = editingAdmin.id || editingAdmin._id;
+      if (!adminId || adminId === 'undefined') {
+        setError('Cannot update this user because the record has no valid ID. Refresh the list and try again.');
+        return;
+      }
+
+      const res = await api.updateAdmin(adminId, editFormData);
       setSuccess(res.data.message || 'Admin updated successfully!');
       setShowEditForm(false);
       setEditingAdmin(null);
