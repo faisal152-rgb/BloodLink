@@ -1,4 +1,8 @@
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
+
+const hasValidUserId = (userId) =>
+    typeof userId === "string" && mongoose.isValidObjectId(userId);
 
 const userAuth = async (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -16,6 +20,9 @@ const userAuth = async (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (!hasValidUserId(decoded.id || decoded._id)) {
+            throw new Error("Token has an invalid user ID");
+        }
         req.user = decoded;
         return next();
     } catch (error) {
@@ -23,6 +30,11 @@ const userAuth = async (req, res, next) => {
         if (bearerToken && cookieToken && bearerToken !== cookieToken) {
             try {
                 const decodedCookie = jwt.verify(cookieToken, process.env.JWT_SECRET);
+                if (!hasValidUserId(decodedCookie.id || decodedCookie._id)) {
+                    return res.status(401).json({
+                        message: "Invalid or expired token",
+                    });
+                }
                 req.user = decodedCookie;
                 return next();
             } catch (err) {
@@ -39,4 +51,3 @@ const userAuth = async (req, res, next) => {
 module.exports = {
     userAuth
 };
-
