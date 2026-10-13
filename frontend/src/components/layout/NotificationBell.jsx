@@ -9,7 +9,7 @@ const NotificationBell = ({ target }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const welcomeDismissalsInFlight = useRef(new Set());
+  const welcomeDismissalTimers = useRef(new Map());
   const panelId = `${target}-notifications-panel`;
 
   const fetchNotifications = async () => {
@@ -41,23 +41,29 @@ const NotificationBell = ({ target }) => {
     const welcomeIds = notifications
       .filter((notification) => notification.type === 'welcome')
       .map((notification) => notification._id || notification.id)
-      .filter((id) => id && !welcomeDismissalsInFlight.current.has(id));
+      .filter((id) => id && !welcomeDismissalTimers.current.has(id));
 
-    welcomeIds.forEach((id) => welcomeDismissalsInFlight.current.add(id));
+    welcomeIds.forEach((id) => {
+      const timer = setTimeout(async () => {
+        welcomeDismissalTimers.current.delete(id);
+        try {
+          await api.dismissWelcomeNotification(id);
+          setNotifications((current) =>
+            current.filter((notification) => (notification._id || notification.id) !== id)
+          );
+        } catch (dismissError) {
+          console.error('Error dismissing viewed welcome notification:', dismissError);
+        }
+      }, 30_000);
 
-    welcomeIds.forEach(async (id) => {
-      try {
-        await api.dismissWelcomeNotification(id);
-        setNotifications((current) =>
-          current.filter((notification) => (notification._id || notification.id) !== id)
-        );
-      } catch (dismissError) {
-        console.error('Error dismissing viewed welcome notification:', dismissError);
-      } finally {
-        welcomeDismissalsInFlight.current.delete(id);
-      }
+      welcomeDismissalTimers.current.set(id, timer);
     });
   }, [isOpen, loading, error, notifications]);
+
+  useEffect(() => () => {
+    welcomeDismissalTimers.current.forEach((timer) => clearTimeout(timer));
+    welcomeDismissalTimers.current.clear();
+  }, []);
 
   return (
     <div className="donor-notifications-wrap">
