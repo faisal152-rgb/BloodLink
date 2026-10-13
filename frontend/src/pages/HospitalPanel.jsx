@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
   Eye,
   Edit2,
   Trash2,
-  Bell,
   Menu,
   X,
   AlertCircle,
@@ -19,6 +18,7 @@ import {
 } from 'lucide-react';
 import '../styles/hospitalpanel.css';
 import * as api from '../services/api';
+import NotificationBell from '../components/layout/NotificationBell';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 const URGENCY_LEVELS = ['Normal', 'Urgent', 'Emergency'];
@@ -28,14 +28,9 @@ const URGENCY_LEVELS = ['Normal', 'Urgent', 'Emergency'];
 const HospitalPanel = ({ userData, onLogout, onRefreshUserData }) => {
   const [activeTab, setActiveTab] = useState('requests');
   const [showForm, setShowForm] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [requests, setRequests] = useState([]);
-  const [notifications, setNotifications] = useState([]);
-  const welcomeDismissalsInFlight = useRef(new Set());
-
   // Safe array helpers
   const safeRequests = Array.isArray(requests) ? requests : [];
-  const safeNotifications = Array.isArray(notifications) ? notifications : [];
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,15 +40,10 @@ const HospitalPanel = ({ userData, onLogout, onRefreshUserData }) => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [reqRes, notifRes] = await Promise.all([
-        api.getBloodRequests(),
-        api.getNotifications('hospital')
-      ]);
+      const reqRes = await api.getBloodRequests();
       // Filter requests for this specific hospital if needed
       const reqData = Array.isArray(reqRes.data) ? reqRes.data : (reqRes.data?.data || []);
-      const notifData = Array.isArray(notifRes.data) ? notifRes.data : (notifRes.data?.data || []);
       setRequests(reqData);
-      setNotifications(notifData);
     } catch (error) {
       console.error("Error fetching hospital data:", error);
     } finally {
@@ -61,29 +51,6 @@ const HospitalPanel = ({ userData, onLogout, onRefreshUserData }) => {
     }
   };
 
-  useEffect(() => {
-    if (!showNotifications || loading) return;
-
-    const welcomeIds = notifications
-      .filter((notification) => notification.type === 'welcome')
-      .map((notification) => notification._id || notification.id)
-      .filter((id) => id && !welcomeDismissalsInFlight.current.has(id));
-
-    welcomeIds.forEach((id) => welcomeDismissalsInFlight.current.add(id));
-
-    welcomeIds.forEach(async (id) => {
-      try {
-        await api.dismissWelcomeNotification(id);
-        setNotifications((current) =>
-          current.filter((notification) => (notification._id || notification.id) !== id)
-        );
-      } catch (error) {
-        console.error('Error dismissing viewed welcome notification:', error);
-      } finally {
-        welcomeDismissalsInFlight.current.delete(id);
-      }
-    });
-  }, [showNotifications, loading, notifications]);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showRequestDetails, setShowRequestDetails] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -234,8 +201,6 @@ const HospitalPanel = ({ userData, onLogout, onRefreshUserData }) => {
     }
   };
 
-  const unreadNotifications = safeNotifications.filter(n => !n.read).length;
-
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileStatus, setProfileStatus] = useState({ message: '', type: '' });
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -357,67 +322,13 @@ const HospitalPanel = ({ userData, onLogout, onRefreshUserData }) => {
           </nav>
 
           <div className="topbar-right">
-            <button
-              className={`notification-btn ${unreadNotifications > 0 ? 'has-unread' : ''}`}
-              onClick={() => setShowNotifications(!showNotifications)}
-            >
-              <Bell size={20} />
-              {unreadNotifications > 0 && (
-                <span className="notification-badge">{unreadNotifications}</span>
-              )}
-            </button>
+            <NotificationBell target="hospital" />
           </div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="hospital-main">
-
-        {/* Notifications Dropdown */}
-        <AnimatePresence>
-          {showNotifications && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="notifications-dropdown"
-            >
-              <div className="notifications-header">
-                <h3>Notifications</h3>
-                <button onClick={() => setShowNotifications(false)}>
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="notifications-list">
-                {safeNotifications.map(notif => (
-                  <div
-                    key={notif.id}
-                    className={`notification-item ${!notif.read ? 'unread' : ''}`}
-                  >
-                    <div className="notification-icon">
-                      {notif.type === 'approval' && (
-                        <CheckCircle2 size={20} color="#28a745" />
-                      )}
-                      {notif.type === 'donor' && (
-                        <AlertTriangle size={20} color="#ffc107" />
-                      )}
-                      {notif.type === 'completed' && (
-                        <CheckCircle2 size={20} color="#17a2b8" />
-                      )}
-                      {notif.type === 'rejection' && (
-                        <AlertCircle size={20} color="#dc3545" />
-                      )}
-                    </div>
-                    <div className="notification-content">
-                      <p>{notif.message}</p>
-                      <span className="notification-time">{notif.timestamp}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Requests Tab */}
         {activeTab === 'requests' && (
