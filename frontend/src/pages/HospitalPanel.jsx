@@ -1,1013 +1,1579 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus,
-  Eye,
+  LayoutDashboard,
+  Users,
+  Droplet,
+  MapPin,
+  Bell,
+  ShieldCheck,
+  Settings as SettingsIcon,
+  LogOut,
+  Search,
+  Filter,
   Edit2,
   Trash2,
-  Bell,
-  Menu,
-  X,
+  CheckCircle,
+  XCircle,
+  Plus,
+  ChevronDown,
+  TrendingUp,
+  Activity,
   AlertCircle,
-  CheckCircle2,
-  Clock,
-  AlertTriangle,
-  MapPin,
-  Phone,
-  Lock,
-  Mail,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
-import '../styles/hospitalpanel.css';
+import '../styles/adminpanel.css';
 import * as api from '../services/api';
 
-const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
-const URGENCY_LEVELS = ['Normal', 'Urgent', 'Emergency'];
-
-// API Integration Ready
-
-const HospitalPanel = ({ userData, onLogout, onRefreshUserData }) => {
-  const [activeTab, setActiveTab] = useState('requests');
-  const [showForm, setShowForm] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [requests, setRequests] = useState([]);
-  const [notifications, setNotifications] = useState([]);
-
-  // Safe array helpers
-  const safeRequests = Array.isArray(requests) ? requests : [];
-  const safeNotifications = Array.isArray(notifications) ? notifications : [];
+// ============ DASHBOARD COMPONENT ============
+const Dashboard = () => {
+  const [dashboardData, setDashboardData] = useState({
+    totalDonors: 0,
+    activeDonors: 0,
+    pendingRequests: 0,
+    completedRequests: 0,
+    emergencyRequests: 0,
+    recentDonations: [],
+    emergencyList: []
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchData();
-    if (onRefreshUserData) {
-      onRefreshUserData();
-    }
+    fetchDashboardData();
   }, []);
 
-  const fetchData = async () => {
+  const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [reqRes, notifRes] = await Promise.all([
-        api.getBloodRequests(),
-        api.getNotifications('hospital')
+      const [statsRes, recentRes, requestsRes] = await Promise.all([
+        api.getDashboardStats(),
+        api.getRecentDonations(),
+        api.getBloodRequests()
       ]);
-      // Filter requests for this specific hospital if needed
-      const reqData = Array.isArray(reqRes.data) ? reqRes.data : (reqRes.data?.data || []);
-      const notifData = Array.isArray(notifRes.data) ? notifRes.data : (notifRes.data?.data || []);
-      setRequests(reqData);
-      setNotifications(notifData);
+
+      setDashboardData({
+        ...statsRes.data,
+        recentDonations: recentRes.data,
+        emergencyList: (Array.isArray(requestsRes.data) ? requestsRes.data : (requestsRes.data?.data || [])).filter(r => r.urgency === 'emergency')
+      });
     } catch (error) {
-      console.error("Error fetching hospital data:", error);
+      console.error("Error fetching dashboard data:", error);
     } finally {
       setLoading(false);
     }
   };
-  const [selectedRequest, setSelectedRequest] = useState(null);
-  const [showRequestDetails, setShowRequestDetails] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editId, setEditId] = useState(null);
-  const [formData, setFormData] = useState({
-    patient: '',
-    bloodGroup: 'O+',
-    units: 1,
-    urgency: 'Normal',
-    location: '',
-    date: '',
-    contact: '',
-    notes: '',
-  });
-  const [passwordChange, setPasswordChange] = useState({
-    oldPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [formErrors, setFormErrors] = useState({});
-  const [passwordStatus, setPasswordStatus] = useState({ message: '', type: '' });
 
-  const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-    if (formErrors[name]) {
-      setFormErrors(prev => ({
-        ...prev,
-        [name]: '',
-      }));
+  const stats = [
+    { label: 'Total Donors', value: dashboardData.totalDonors, icon: Users, color: '#0d6efd' },
+    { label: 'Active Donors', value: dashboardData.activeDonors, icon: Activity, color: '#198754' },
+    { label: 'Pending Requests', value: dashboardData.pendingRequests, icon: AlertCircle, color: '#ffc107' },
+    { label: 'Emergency Cases', value: dashboardData.emergencyRequests, icon: AlertCircle, color: '#dc3545' },
+  ];
+
+  if (loading) return <div className="loading-spinner">Loading Dashboard...</div>;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="admin-section">
+      <div className="section-header">
+        <h2>Dashboard Overview</h2>
+        <p>Monitor key metrics and recent activities</p>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="stats-grid">
+        {stats.map((stat, idx) => {
+          const Icon = stat.icon;
+          return (
+            <motion.div
+              key={idx}
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: idx * 0.1 }}
+              className="stat-card"
+            >
+              <div className="stat-icon" style={{ background: `${stat.color}20`, color: stat.color }}>
+                <Icon size={24} />
+              </div>
+              <div className="stat-content">
+                <h3>{stat.value?.toLocaleString() || 0}</h3>
+                <p>{stat.label}</p>
+              </div>
+              <TrendingUp size={16} style={{ color: stat.color, opacity: 0.5 }} />
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Recent Donations & Emergency Requests */}
+      <div className="dashboard-grid">
+        {/* Recent Donations */}
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="dashboard-card"
+        >
+          <h3>Recent Donations 🩸</h3>
+          <div className="recent-list">
+            {dashboardData.recentDonations.length > 0 ? (
+              dashboardData.recentDonations.map((item, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: idx * 0.1 }}
+                  className="recent-item"
+                >
+                  <div className="recent-info">
+                    <p className="donor-name">{item.donor}</p>
+                    <span className="blood-badge" style={{ background: '#dc354520', color: '#dc3545' }}>
+                      {item.bloodGroup}
+                    </span>
+                  </div>
+                  <div className="recent-details">
+                    <small>{item.hospital}</small>
+                    <small className="date">{new Date(item.date).toLocaleDateString()}</small>
+                  </div>
+                </motion.div>
+              ))
+            ) : (
+              <p className="no-data">No recent donations</p>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Emergency Requests */}
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="dashboard-card emergency"
+        >
+          <h3>🚨 Emergency Requests</h3>
+          <div className="emergency-list">
+            {dashboardData.emergencyList.length > 0 ? (
+              dashboardData.emergencyList.map((req, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: idx * 0.1 }}
+                  className="emergency-item"
+                >
+                  <div className="emergency-header">
+                    <p className="patient-name">{req.patient}</p>
+                    <span className="urgency-badge emergency">{req.status.toUpperCase()}</span>
+                  </div>
+                  <div className="emergency-info">
+                    <small>{req.hospital} - {req.bloodGroup}</small>
+                  </div>
+                </motion.div>
+              ))
+            ) : (
+              <p className="no-data">No active emergency requests</p>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+};
+
+// ============ DONOR MANAGEMENT COMPONENT ============
+const DonorManagement = () => {
+  const [donors, setDonors] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterBlood, setFilterBlood] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [editingId, setEditingId] = useState(null);
+  const [editFormData, setEditFormData] = useState({ name: '', bloodGroup: 'A+', location: '', contact: '', type: 'unpaid' });
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newDonor, setNewDonor] = useState({ name: '', bloodGroup: 'A+', location: '', contact: '', type: 'unpaid' });
+
+  useEffect(() => {
+    fetchDonors();
+  }, []);
+
+  const fetchDonors = async () => {
+    try {
+      setLoading(true);
+      const res = await api.getDonors();
+      const donorsData = Array.isArray(res.data) ? res.data : (res.data?.donors || res.data?.data || []);
+      setDonors(donorsData);
+    } catch (error) {
+      console.error("Error fetching donors:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const validateForm = () => {
-    const errors = {};
-    if (!formData.patient?.trim()) errors.patient = 'Patient name is required';
-    if (!formData.units || formData.units < 1) errors.units = 'Units must be at least 1';
-    if (!formData.location?.trim()) errors.location = 'Location is required';
-    if (!formData.date) errors.date = 'Required date is required';
-    if (!formData.contact?.trim()) errors.contact = 'Contact number is required';
-    else if (formData.contact.length < 10) errors.contact = 'Valid contact number is required';
-    return errors;
+  const filteredDonors = (Array.isArray(donors) ? donors : []).filter(d => {
+    const matchSearch = d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      d.bloodGroup.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchBlood = filterBlood === 'all' || d.bloodGroup === filterBlood;
+    const matchStatus = filterStatus === 'all' || d.status === filterStatus;
+    return matchSearch && matchBlood && matchStatus;
+  });
+
+  const handleAddDonor = async () => {
+    if (newDonor.name && newDonor.contact) {
+      try {
+        const res = await api.addDonor(newDonor);
+        setDonors([res.data, ...donors]);
+        setNewDonor({ name: '', bloodGroup: 'A+', location: '', contact: '', type: 'unpaid' });
+        setShowAddForm(false);
+      } catch (error) {
+        console.error("Error adding donor:", error);
+      }
+    }
   };
 
-  const handleSubmitRequest = async (e) => {
-    e.preventDefault();
-    const errors = validateForm();
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
+  const handleApprove = async (id) => {
+    try {
+      await api.approveDonor(id);
+      setDonors(donors.map(d => (d._id || d.id) === id ? { ...d, status: 'approved' } : d));
+    } catch (error) {
+      console.error("Error approving donor:", error);
+    }
+  };
+
+  const handleBlock = async (id) => {
+    try {
+      await api.blockDonor(id);
+      setDonors(donors.map(d => (d._id || d.id) === id ? { ...d, status: 'blocked' } : d));
+    } catch (error) {
+      console.error("Error blocking donor:", error);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await api.deleteDonor(id);
+      setDonors(donors.filter(d => (d._id || d.id) !== id));
+    } catch (error) {
+      console.error("Error deleting donor:", error);
+    }
+  };
+
+  const handleEditStart = (donor) => {
+    setEditingId(donor._id || donor.id);
+    setEditFormData({
+      name: donor.name,
+      bloodGroup: donor.bloodGroup,
+      location: donor.location,
+      contact: donor.contact,
+      type: donor.type
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditFormData({ name: '', bloodGroup: 'A+', location: '', contact: '', type: 'unpaid' });
+  };
+
+  const handleSaveEdit = async () => {
+    if (editFormData.name && editFormData.contact) {
+      try {
+        await api.updateDonor(editingId, editFormData);
+        setDonors(donors.map(d =>
+          (d._id || d.id) === editingId
+            ? { ...d, ...editFormData }
+            : d
+        ));
+        handleCancelEdit();
+      } catch (error) {
+        console.error("Error updating donor:", error);
+      }
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'approved': return '#198754';
+      case 'pending': return '#ffc107';
+      case 'blocked': return '#dc3545';
+      default: return '#6c757d';
+    }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="admin-section">
+      <div className="section-header">
+        <h2>Donor Management 🧑‍🤝‍🧑</h2>
+        <button type="button" className="btn btn-primary" onClick={() => setShowAddForm(prev => !prev)}>
+          <Plus size={18} /> Add New Donor
+        </button>
+      </div>
+
+      {/* Add Donor Form */}
+      <AnimatePresence>
+        {showAddForm && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="add-admin-form"
+          >
+            <input
+              type="text"
+              placeholder="Donor Name"
+              value={newDonor.name}
+              onChange={(e) => setNewDonor({ ...newDonor, name: e.target.value })}
+            />
+            <select value={newDonor.bloodGroup} onChange={(e) => setNewDonor({ ...newDonor, bloodGroup: e.target.value })}>
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+              <option value="O+">O+</option>
+              <option value="O-">O-</option>
+            </select>
+            <input
+              type="text"
+              placeholder="Location/City"
+              value={newDonor.location}
+              onChange={(e) => setNewDonor({ ...newDonor, location: e.target.value })}
+            />
+            <input
+              type="tel"
+              placeholder="Contact Number"
+              value={newDonor.contact}
+              onChange={(e) => setNewDonor({ ...newDonor, contact: e.target.value })}
+            />
+            <select value={newDonor.type} onChange={(e) => setNewDonor({ ...newDonor, type: e.target.value })}>
+              <option value="unpaid">Unpaid/Volunteer</option>
+              <option value="paid">Paid</option>
+            </select>
+            <div className="form-actions">
+              <button className="btn btn-primary" onClick={handleAddDonor} type="button">Add Donor</button>
+              <button className="btn btn-secondary" type="button" onClick={() => setShowAddForm(false)}>Cancel</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Filters */}
+      <div className="filters-bar">
+        <div className="search-box">
+          <Search size={18} />
+          <input
+            type="text"
+            placeholder="Search by name or blood group..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
+        <select value={filterBlood} onChange={(e) => setFilterBlood(e.target.value)} className="filter-select">
+          <option value="all">All Blood Groups</option>
+          <option value="A+">A+</option>
+          <option value="A-">A-</option>
+          <option value="B+">B+</option>
+          <option value="B-">B-</option>
+          <option value="AB+">AB+</option>
+          <option value="AB-">AB-</option>
+          <option value="O+">O+</option>
+          <option value="O-">O-</option>
+        </select>
+
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="filter-select">
+          <option value="all">All Status</option>
+          <option value="approved">Approved</option>
+          <option value="pending">Pending</option>
+          <option value="blocked">Blocked</option>
+        </select>
+      </div>
+
+      {/* Donors Table */}
+      <div className="table-container">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Blood Group</th>
+              <th>Location</th>
+              <th>Contact</th>
+              <th>Status</th>
+              <th>Last Donation</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredDonors.map((donor, idx) => (
+              <motion.tr
+                key={donor.id}
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: idx * 0.05 }}
+              >
+                {editingId === (donor._id || donor.id) ? (
+                  <>
+                    <td>
+                      <input
+                        type="text"
+                        value={editFormData.name}
+                        onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                        className="edit-input"
+                      />
+                    </td>
+                    <td>
+                      <select
+                        value={editFormData.bloodGroup}
+                        onChange={(e) => setEditFormData({ ...editFormData, bloodGroup: e.target.value })}
+                        className="edit-input"
+                      >
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        value={editFormData.location}
+                        onChange={(e) => setEditFormData({ ...editFormData, location: e.target.value })}
+                        className="edit-input"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="tel"
+                        value={editFormData.contact}
+                        onChange={(e) => setEditFormData({ ...editFormData, contact: e.target.value })}
+                        className="edit-input"
+                      />
+                    </td>
+                    <td>{donor.status.charAt(0).toUpperCase() + donor.status.slice(1)}</td>
+                    <td>{new Date(donor.lastDonation).toLocaleDateString()}</td>
+                    <td className="actions-cell">
+                      <div className="action-buttons">
+                        <button className="btn-icon approve" onClick={handleSaveEdit} title="Save" type="button">
+                          <CheckCircle size={16} />
+                        </button>
+                        <button className="btn-icon block" onClick={handleCancelEdit} title="Cancel" type="button">
+                          <XCircle size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td className="name-cell">
+                      <div className="donor-avatar">{donor.name.charAt(0)}</div>
+                      {donor.name}
+                    </td>
+                    <td>
+                      <span className="blood-badge">{donor.bloodGroup}</span>
+                    </td>
+                    <td>{donor.location}</td>
+                    <td className="contact-cell">{donor.contact}</td>
+                    <td>
+                      <span className="status-badge" style={{ background: `${getStatusColor(donor.status)}20`, color: getStatusColor(donor.status) }}>
+                        {donor.status.charAt(0).toUpperCase() + donor.status.slice(1)}
+                      </span>
+                    </td>
+                    <td>{new Date(donor.lastDonation).toLocaleDateString()}</td>
+                    <td className="actions-cell">
+                      <div className="action-buttons">
+                        {donor.status !== 'approved' && (
+                          <button type="button" className="btn-icon approve" onClick={() => handleApprove(donor._id || donor.id)} title="Approve">
+                            <CheckCircle size={16} />
+                          </button>
+                        )}
+                        {donor.status !== 'blocked' && (
+                          <button type="button" className="btn-icon block" onClick={() => handleBlock(donor._id || donor.id)} title="Block">
+                            <XCircle size={16} />
+                          </button>
+                        )}
+                        <button type="button" className="btn-icon edit" onClick={() => handleEditStart(donor)} title="Edit">
+                          <Edit2 size={16} />
+                        </button>
+                        <button type="button" className="btn-icon delete" onClick={() => handleDelete(donor._id || donor.id)} title="Delete">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </>
+                )}
+              </motion.tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="result-info">Showing {filteredDonors.length} of {donors.length} donors</p>
+    </motion.div>
+  );
+};
+
+// ============ BLOOD REQUESTS MANAGEMENT ============
+const BloodRequestsManagement = () => {
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filterUrgency, setFilterUrgency] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newRequest, setNewRequest] = useState({ patient: '', bloodGroup: 'A+', hospital: '', urgency: 'normal', units: 1 });
+  const [requestMessage, setRequestMessage] = useState('');
+
+  useEffect(() => {
+    fetchRequests();
+  }, []);
+
+  const fetchRequests = async () => {
+    try {
+      setLoading(true);
+      const res = await api.getBloodRequests();
+      setRequests(res.data);
+    } catch (error) {
+      console.error("Error fetching requests:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredRequests = requests.filter(r => {
+    const matchUrgency = filterUrgency === 'all' || r.urgency === filterUrgency;
+    const matchStatus = filterStatus === 'all' || r.status === filterStatus;
+    return matchUrgency && matchStatus;
+  });
+
+  const handleAddRequest = async () => {
+    if (!newRequest.patient.trim() || !newRequest.hospital.trim() || !newRequest.contact?.trim()) {
+      setRequestMessage('Patient, Hospital, and Contact are required.');
       return;
     }
 
     try {
-      const payload = {
-        ...formData,
-        urgency: formData.urgency.toLowerCase(),
-        hospital: userData?.email || userData?.name || 'Hospital',
-      };
-
-      if (isEditing) {
-        const res = await api.updateBloodRequest(editId, payload);
-        setRequests(requests.map(r => ((r._id || r.id) === editId ? res.data : r)));
-      } else {
-        payload.status = 'pending';
-        const res = await api.addBloodRequest(payload);
-        setRequests([res.data, ...requests]);
-      }
-
-      setFormData({
-        patient: '',
-        bloodGroup: 'O+',
-        units: 1,
-        urgency: 'Normal',
-        location: '',
-        date: '',
-        contact: '',
-        notes: '',
-      });
-      setShowForm(false);
-      setIsEditing(false);
-      setEditId(null);
-      setFormErrors({});
-      setActiveTab('requests');
+      const res = await api.addBloodRequest(newRequest);
+      setRequests([res.data, ...requests]);
+      setNewRequest({ patient: '', bloodGroup: 'A+', hospital: '', urgency: 'normal', units: 1, contact: '' });
+      setShowAddForm(false);
+      setRequestMessage('Request added successfully.');
+      setTimeout(() => setRequestMessage(''), 3000);
     } catch (error) {
-      console.error("Error submitting request:", error);
-      alert("Failed to " + (isEditing ? "update" : "submit") + " request: " + (error.response?.data?.message || error.message));
+      console.error('Error adding request:', error);
+      const message = error?.response?.data?.message || 'Failed to add request. Check your server connection.';
+      setRequestMessage(message);
+      setTimeout(() => setRequestMessage(''), 3000);
     }
   };
 
-  const handleDeleteRequest = async (id) => {
+  const handleApprove = async (id) => {
+    try {
+      await api.updateBloodRequestStatus(id, 'approved');
+      setRequests(requests.map(r => (r._id || r.id) === id ? { ...r, status: 'approved' } : r));
+    } catch (error) {
+      console.error("Error approving request:", error);
+    }
+  };
+
+  const handleReject = async (id) => {
     try {
       await api.deleteBloodRequest(id);
       setRequests(requests.filter(r => (r._id || r.id) !== id));
     } catch (error) {
-      console.error("Error deleting request:", error);
+      console.error("Error rejecting request:", error);
     }
   };
 
-  const handleEditRequest = (request) => {
-    setFormData({
-      patient: request.patient || request.patientName || '',
-      bloodGroup: request.bloodGroup || 'O+',
-      units: request.units || 1,
-      urgency: request.urgency || 'normal',
-      location: request.location || '',
-      date: request.date ? new Date(request.date).toISOString().split('T')[0] : '',
-      contact: request.contact || '',
-      notes: request.notes || request.additionalNotes || '',
-    });
-    setIsEditing(true);
-    setEditId(request._id || request.id);
-    setActiveTab('create');
-    setShowForm(true);
-  };
-
-  const handleViewDetails = (request) => {
-    setSelectedRequest(request);
-    setShowRequestDetails(true);
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'approved':
-        return <CheckCircle2 size={18} className="status-icon approved" />;
-      case 'pending':
-        return <Clock size={18} className="status-icon pending" />;
-      case 'completed':
-        return <CheckCircle2 size={18} className="status-icon completed" />;
-      case 'rejected':
-        return <AlertCircle size={18} className="status-icon rejected" />;
-      default:
-        return null;
-    }
-  };
-
-  const getUrgencyClass = (urgency) => {
-    switch (urgency?.toLowerCase()) {
-      case 'emergency':
-        return 'urgency-emergency';
-      case 'urgent':
-        return 'urgency-urgent';
-      default:
-        return 'urgency-normal';
-    }
-  };
-
-  const unreadNotifications = safeNotifications.filter(n => !n.read).length;
-
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [profileStatus, setProfileStatus] = useState({ message: '', type: '' });
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [profileFormData, setProfileFormData] = useState({
-    name: userData?.name || '',
-    email: userData?.email || '',
-    hospitalName: userData?.hospitalName || '',
-    phone: userData?.phone || '',
-    role: userData?.role || 'hospital',
-  });
-
-  // Sync profile data when userData changes (e.g. refreshed by parent)
-  useEffect(() => {
-    setProfileFormData({
-      name: userData?.name || '',
-      email: userData?.email || '',
-      hospitalName: userData?.hospitalName || '',
-      phone: userData?.phone || '',
-      role: userData?.role || 'hospital',
-    });
-  }, [userData]);
-
-  const handleProfileChange = (e) => {
-    const { name, value } = e.target;
-    setProfileFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleUpdateProfile = async (e) => {
-    e.preventDefault();
-    setProfileLoading(true);
-    setProfileStatus({ message: '', type: '' });
-
+  const handleComplete = async (id) => {
     try {
-      const resp = await api.updateProfile({
-        id: userData?.id || userData?._id,
-        ...profileFormData
-      });
-
-      setProfileStatus({ message: 'Profile updated successfully! ✨', type: 'success' });
-      setIsEditingProfile(false);
-
-      // Update local storage to keep session in sync
-      const updatedUser = { ...userData, ...resp.data };
-      localStorage.setItem('bloodlinkUser', JSON.stringify(updatedUser));
-
-      // In a more complex app, you'd trigger a re-fetch or clear a cache.
-      // For now we'll just show the success status.
+      await api.updateBloodRequestStatus(id, 'completed');
+      setRequests(requests.map(r => (r._id || r.id) === id ? { ...r, status: 'completed' } : r));
     } catch (error) {
-      console.error("Error updating profile:", error);
-      setProfileStatus({
-        message: 'Failed to update profile: ' + (error.response?.data?.message || error.message),
-        type: 'error'
-      });
-    } finally {
-      setProfileLoading(false);
+      console.error("Error completing request:", error);
     }
   };
 
-  const handlePasswordSubmit = (e) => {
-    e.preventDefault();
-    setPasswordStatus({ message: '', type: '' });
-    if (passwordChange.newPassword !== passwordChange.confirmPassword) {
-      setPasswordStatus({ message: 'Passwords do not match', type: 'error' });
-      return;
+  const getUrgencyColor = (urgency) => {
+    return urgency === 'emergency' ? '#dc3545' : '#198754';
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'pending': return '#ffc107';
+      case 'approved': return '#0d6efd';
+      case 'completed': return '#198754';
+      default: return '#6c757d';
     }
-
-    // Simulate successful password change if API is not available
-    setPasswordStatus({ message: 'Password changed successfully! ✨', type: 'success' });
-
-    setTimeout(() => {
-      setShowPasswordModal(false);
-      setPasswordChange({
-        oldPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
-      setPasswordStatus({ message: '', type: '' });
-    }, 2000);
   };
 
   return (
-    <section className="hospital-panel">
-      {/* Top Navigation Bar */}
-      <div className="hospital-topbar">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="admin-section">
+      <div className="section-header">
+        <h2>Blood Requests Management 🩸</h2>
+        <button type="button" className="btn btn-primary" onClick={() => setShowAddForm(prev => !prev)}>
+          <Plus size={18} /> New Request
+        </button>
+      </div>
+
+      {/* Add Request Form */}
+      <AnimatePresence>
+        {showAddForm && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="add-admin-form"
+          >
+            <input
+              type="text"
+              placeholder="Patient Name"
+              value={newRequest.patient}
+              onChange={(e) => setNewRequest({ ...newRequest, patient: e.target.value })}
+            />
+            <input
+              type="text"
+              placeholder="Hospital"
+              value={newRequest.hospital}
+              onChange={(e) => setNewRequest({ ...newRequest, hospital: e.target.value })}
+            />
+            <input
+              type="tel"
+              placeholder="Contact Number"
+              value={newRequest.contact || ''}
+              onChange={(e) => setNewRequest({ ...newRequest, contact: e.target.value })}
+            />
+            <select value={newRequest.bloodGroup} onChange={(e) => setNewRequest({ ...newRequest, bloodGroup: e.target.value })}>
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+              <option value="O+">O+</option>
+              <option value="O-">O-</option>
+            </select>
+            <input
+              type="number"
+              placeholder="Units"
+              min="1"
+              value={newRequest.units}
+              onChange={(e) => setNewRequest({ ...newRequest, units: Number(e.target.value) })}
+            />
+            <select value={newRequest.urgency} onChange={(e) => setNewRequest({ ...newRequest, urgency: e.target.value })}>
+              <option value="normal">Normal</option>
+              <option value="emergency">Emergency 🚨</option>
+            </select>
+            <div className="form-actions">
+              <button type="button" className="btn btn-primary" onClick={handleAddRequest}>Add Request</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowAddForm(false)}>Cancel</button>
+            </div>
+            {requestMessage && <div className="form-feedback">{requestMessage}</div>}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Filters */}
+      <div className="filters-bar">
+        <select value={filterUrgency} onChange={(e) => setFilterUrgency(e.target.value)} className="filter-select">
+          <option value="all">All Urgency Levels</option>
+          <option value="normal">Normal</option>
+          <option value="emergency">Emergency 🚨</option>
+        </select>
+
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="filter-select">
+          <option value="all">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+
+      {/* Requests Table */}
+      <div className="table-container">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Patient Name</th>
+              <th>Blood Group</th>
+              <th>Hospital</th>
+              <th>Units</th>
+              <th>Urgency</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredRequests.map((req, idx) => (
+              <motion.tr
+                key={req._id || req.id}
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: idx * 0.05 }}
+                className={req.urgency === 'emergency' ? 'emergency-row' : ''}
+              >
+                <td className="name-cell">{req.patient}</td>
+                <td>
+                  <span className="blood-badge">{req.bloodGroup}</span>
+                </td>
+                <td>{req.hospital}</td>
+                <td className="units-cell">{req.units} units</td>
+                <td>
+                  <span className="urgency-badge" style={{ background: `${getUrgencyColor(req.urgency)}20`, color: getUrgencyColor(req.urgency) }}>
+                    {req.urgency === 'emergency' ? '🚨 Emergency' : 'Normal'}
+                  </span>
+                </td>
+                <td>
+                  <span className="status-badge" style={{ background: `${getStatusColor(req.status)}20`, color: getStatusColor(req.status) }}>
+                    {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                  </span>
+                </td>
+                <td>{new Date(req.date).toLocaleDateString()}</td>
+                <td className="actions-cell">
+                  <div className="action-buttons">
+                    {req.status === 'pending' && (
+                      <>
+                        <button type="button" className="btn-icon approve" onClick={() => handleApprove(req._id || req.id)} title="Approve">
+                          <CheckCircle size={16} />
+                        </button>
+                        <button type="button" className="btn-icon delete" onClick={() => handleReject(req._id || req.id)} title="Reject">
+                          <XCircle size={16} />
+                        </button>
+                      </>
+                    )}
+                    {req.status === 'approved' && (
+                      <button type="button" className="btn-icon edit" onClick={() => handleComplete(req._id || req.id)} title="Mark Complete">
+                        <CheckCircle size={16} />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </motion.tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="result-info">Showing {filteredRequests.length} of {requests.length} requests</p>
+    </motion.div>
+  );
+};
+
+// ============ LOCATION MANAGEMENT ============
+const LocationManagement = () => {
+  const [locations, setLocations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newCity, setNewCity] = useState('');
+  const [locationMessage, setLocationMessage] = useState('');
+
+  useEffect(() => {
+    fetchLocations();
+  }, []);
+
+  const fetchLocations = async () => {
+    try {
+      setLoading(true);
+      const res = await api.getLocations();
+      setLocations(res.data);
+    } catch (error) {
+      console.error("Error fetching locations:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddLocation = async () => {
+    if (!newCity.trim()) {
+      setLocationMessage('City name is required.');
+      return;
+    }
+
+    try {
+      const res = await api.addLocation({ city: newCity });
+      setLocations([...locations, res.data]);
+      setNewCity('');
+      setLocationMessage('City added successfully.');
+      setTimeout(() => setLocationMessage(''), 3000);
+    } catch (error) {
+      console.error('Error adding location:', error);
+      setLocationMessage('Failed to add city. Check your server connection.');
+      setTimeout(() => setLocationMessage(''), 3000);
+    }
+  };
+
+  const handleDeleteLocation = async (id) => {
+    try {
+      await api.deleteLocation(id);
+      setLocations(locations.filter(l => (l._id || l.id) !== id));
+    } catch (error) {
+      console.error("Error deleting location:", error);
+      setLocationMessage('Failed to delete location.');
+      setTimeout(() => setLocationMessage(''), 3000);
+    }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="admin-section">
+      <div className="section-header">
+        <h2>Location Management 📍</h2>
+      </div>
+
+      {/* Add New Location */}
+      <div className="add-location-form">
+        <input
+          type="text"
+          placeholder="Enter city name..."
+          value={newCity}
+          onChange={(e) => setNewCity(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleAddLocation()}
+        />
+        <button type="button" className="btn btn-primary" onClick={handleAddLocation}>
+          <Plus size={18} /> Add City
+        </button>
+      </div>
+      {locationMessage && <div className="form-feedback">{locationMessage}</div>}
+
+      {/* Locations Grid */}
+      <div className="locations-grid">
+        {locations.map((loc, idx) => (
+          <motion.div
+            key={loc._id || loc.id}
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: idx * 0.1 }}
+            className="location-card"
+          >
+            <div className="location-header">
+              <h3>📌 {loc.city}</h3>
+              <button
+                type="button"
+                className="btn-icon delete"
+                onClick={() => handleDeleteLocation(loc._id || loc.id)}
+                title="Delete"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+            <div className="location-stats">
+              <div className="stat">
+                <p className="stat-value">{loc.totalDonors}</p>
+                <p className="stat-label">Total Donors</p>
+              </div>
+              <div className="stat">
+                <p className="stat-value">{loc.activeDonors}</p>
+                <p className="stat-label">Active Donors</p>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </motion.div>
+  );
+};
+
+// ============ NOTIFICATIONS SYSTEM ============
+const NotificationsSystem = () => {
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [notificationText, setNotificationText] = useState('');
+  const [notificationTitle, setNotificationTitle] = useState('');
+  const [notificationTarget, setNotificationTarget] = useState('all');
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const res = await api.getNotifications();
+      const data = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      setNotifications(data);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendNotification = async () => {
+    if (notificationText.trim()) {
+      try {
+        const res = await api.sendNotification({
+          title: notificationTitle.trim() || undefined,
+          message: notificationText,
+          target: notificationTarget
+        });
+        const newNotif = res.data;
+        setNotifications([newNotif, ...notifications]);
+        setNotificationText('');
+        setNotificationTitle('');
+        setNotificationTarget('all');
+      } catch (error) {
+        console.error("Error sending notification:", error);
+      }
+    }
+  };
+
+  const getTargetLabel = (target) => {
+    switch (target) {
+      case 'hospital': return 'Hospitals';
+      case 'donor': return 'Donors';
+      case 'bloodbank': return 'Blood Banks';
+      default: return 'Everyone';
+    }
+  };
+
+  const formatTime = (ts) => {
+    if (!ts) return '';
+    try {
+      return new Date(ts).toLocaleString();
+    } catch { return String(ts); }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="admin-section">
+      <div className="section-header">
+        <h2>Notifications Management 📢</h2>
+      </div>
+
+      {/* Send Notification */}
+      <div className="notification-form">
+        <input
+          type="text"
+          placeholder="Notification title (optional)"
+          value={notificationTitle}
+          onChange={(e) => setNotificationTitle(e.target.value)}
+          style={{ width: '100%', padding: '0.8rem 1rem', marginBottom: '0.8rem', border: '1px solid var(--border-color)', borderRadius: '0.5rem', fontSize: '0.95rem', fontFamily: 'inherit' }}
+        />
+        <textarea
+          placeholder="Write notification message..."
+          value={notificationText}
+          onChange={(e) => setNotificationText(e.target.value)}
+          rows="3"
+        />
+        <div className="form-actions" style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <select
+            value={notificationTarget}
+            onChange={(e) => setNotificationTarget(e.target.value)}
+            style={{ padding: '0.6rem 1rem', borderRadius: '0.5rem', border: '1px solid var(--border-color)', fontSize: '0.9rem', fontFamily: 'inherit' }}
+          >
+            <option value="all">🌍 Send to Everyone</option>
+            <option value="hospital">🏥 Send to Hospitals</option>
+            <option value="donor">🩸 Send to Donors</option>
+            <option value="bloodbank">🏦 Send to Blood Banks</option>
+          </select>
+          <button className="btn btn-primary" onClick={handleSendNotification} type="button">
+            <Bell size={18} /> Send Notification
+          </button>
+        </div>
+      </div>
+
+      {/* Notifications List */}
+      <div className="notifications-list">
+        {loading ? (
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>Loading notifications...</p>
+        ) : notifications.length === 0 ? (
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>No notifications yet</p>
+        ) : notifications.map((notif, idx) => (
+          <motion.div
+            key={notif._id || notif.id || idx}
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: idx * 0.05 }}
+            className={`notification-item ${notif.status || 'sent'}`}
+          >
+            <div className="notification-icon">
+              <Bell size={20} />
+            </div>
+            <div className="notification-content">
+              <h4>{notif.title || 'Notification'}</h4>
+              <p>{notif.message}</p>
+              <small>
+                {formatTime(notif.timestamp || notif.createdAt)}
+                {notif.target && (
+                  <span style={{
+                    marginLeft: '0.8rem',
+                    padding: '0.15rem 0.5rem',
+                    borderRadius: '0.3rem',
+                    background: notif.target === 'all' ? '#0d6efd20' : notif.target === 'hospital' ? '#19875420' : notif.target === 'donor' ? '#6f42c120' : '#dc354520',
+                    color: notif.target === 'all' ? '#0d6efd' : notif.target === 'hospital' ? '#198754' : notif.target === 'donor' ? '#6f42c1' : '#dc3545',
+                    fontSize: '0.75rem',
+                    fontWeight: 600
+                  }}>
+                    → {getTargetLabel(notif.target)}
+                  </span>
+                )}
+              </small>
+            </div>
+            <span className="status-badge">{(notif.status || 'sent').toUpperCase()}</span>
+          </motion.div>
+        ))}
+      </div>
+    </motion.div>
+  );
+};
+
+// ============ ADMIN MANAGEMENT ============
+const AdminManagement = ({ onRefreshUserData }) => {
+  const [admins, setAdmins] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [newAdmin, setNewAdmin] = useState({ name: '', email: '', role: 'admin' });
+  const [editingAdmin, setEditingAdmin] = useState(null);
+  const [editFormData, setEditFormData] = useState({ name: '', email: '', role: 'admin' });
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [adminMessage, setAdminMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchAdmins();
+  }, []);
+
+  const fetchAdmins = async () => {
+    try {
+      setLoading(true);
+      const res = await api.getAdmins();
+      setAdmins(res.data);
+    } catch (error) {
+      console.error("Error fetching admins:", error);
+      setError("Failed to fetch admins");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddAdmin = async () => {
+    setError('');
+    setSuccess('');
+    setAdminMessage('');
+
+    if (!newAdmin.name.trim()) {
+      setError('Please enter admin name');
+      return;
+    }
+    if (!newAdmin.email.trim()) {
+      setError('Please enter admin email');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newAdmin.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const res = await api.addAdmin(newAdmin);
+      if (res.status === 200 && res.data?.message) {
+        setAdminMessage(res.data.message);
+      } else {
+        setSuccess('Admin added successfully!');
+      }
+      setNewAdmin({ name: '', email: '', role: 'admin' });
+      setShowAddForm(false);
+      await fetchAdmins();
+
+      // Refresh current user data in case they were just promoted
+      if (onRefreshUserData) {
+        onRefreshUserData();
+      }
+
+      setTimeout(() => {
+        setSuccess('');
+        setAdminMessage('');
+      }, 3000);
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to add admin';
+      setError(errorMsg);
+      console.error("Error adding admin:", error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteAdmin = async (id) => {
+    try {
+      await api.deleteAdmin(id);
+      await fetchAdmins();
+      setSuccess('Admin deleted successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to delete admin';
+      setError(errorMsg);
+      console.error("Error deleting admin:", error);
+    }
+  };
+
+  const handleEditAdmin = (id) => {
+    const admin = admins.find(a => a.id === id);
+    if (!admin) {
+      setError('Admin record not found for edit.');
+      return;
+    }
+    setEditingAdmin(admin);
+    setEditFormData({ name: admin.name, email: admin.email, role: admin.role });
+    setShowEditForm(true);
+  };
+
+  const handleUpdateAdmin = async () => {
+    setError('');
+    setSuccess('');
+    setAdminMessage('');
+
+    if (!editFormData.name.trim()) {
+      setError('Please enter admin name');
+      return;
+    }
+    if (!editFormData.email.trim()) {
+      setError('Please enter admin email');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editFormData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const res = await api.updateAdmin(editingAdmin.id, editFormData);
+      setSuccess(res.data.message || 'Admin updated successfully!');
+      setShowEditForm(false);
+      setEditingAdmin(null);
+      setEditFormData({ name: '', email: '', role: 'admin' });
+      await fetchAdmins();
+
+      // Refresh current user data if the updated user is the logged-in user
+      if (onRefreshUserData) {
+        onRefreshUserData();
+      }
+
+      setTimeout(() => {
+        setSuccess('');
+      }, 3000);
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to update admin';
+      setError(errorMsg);
+      console.error("Error updating admin:", error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="admin-section">
+      <div className="section-header">
+        <h2>Admin Management 👨‍💻</h2>
+        <button type="button" className="btn btn-primary" onClick={() => setShowAddForm(prev => !prev)} disabled={submitting}>
+          <Plus size={18} /> Add Admin
+        </button>
+      </div>
+
+      {/* Error/Success/Admin Messages */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="alert alert-error"
+          style={{ marginBottom: '15px', padding: '12px', backgroundColor: '#f8d7da', borderLeft: '4px solid #dc3545', borderRadius: '4px', color: '#721c24' }}
+        >
+          {error}
+        </motion.div>
+      )}
+      {success && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="alert alert-success"
+          style={{ marginBottom: '15px', padding: '12px', backgroundColor: '#d4edda', borderLeft: '4px solid #198754', borderRadius: '4px', color: '#155724' }}
+        >
+          {success}
+        </motion.div>
+      )}
+      {adminMessage && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="alert alert-info"
+          style={{ marginBottom: '15px', padding: '12px', backgroundColor: '#d1ecf1', borderLeft: '4px solid #0dcaf0', borderRadius: '4px', color: '#0c5460' }}
+        >
+          {adminMessage}
+        </motion.div>
+      )}
+
+      {/* Add Admin Form */}
+      <AnimatePresence>
+        {showAddForm && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="add-admin-form"
+          >
+            <input
+              type="text"
+              placeholder="Full Name"
+              value={newAdmin.name}
+              onChange={(e) => setNewAdmin({ ...newAdmin, name: e.target.value })}
+              disabled={submitting}
+            />
+            <input
+              type="email"
+              placeholder="Email Address"
+              value={newAdmin.email}
+              onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
+              disabled={submitting}
+            />
+            <select
+              value={newAdmin.role}
+              onChange={(e) => setNewAdmin({ ...newAdmin, role: e.target.value })}
+              disabled={submitting}
+            >
+              <option value="admin">Admin</option>
+              <option value="bloodbank">Blood Bank</option>
+              <option value="hospital">Hospital</option>
+              <option value="donor">Donor</option>
+            </select>
+            <div className="form-actions">
+              <button
+                className="btn btn-primary"
+                onClick={handleAddAdmin}
+                disabled={submitting}
+                type="button">
+                {submitting ? 'Adding...' : 'Add Admin'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  setShowAddForm(false);
+                  setError('');
+                  setNewAdmin({ name: '', email: '', role: 'admin' });
+                }}
+                disabled={submitting}
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Admin Form */}
+      <AnimatePresence>
+        {showEditForm && editingAdmin && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="add-admin-form"
+          >
+            <h3 style={{ marginBottom: '1rem', color: '#212529' }}>Edit Admin - {editingAdmin.name}</h3>
+            <input
+              type="text"
+              placeholder="Full Name"
+              value={editFormData.name}
+              onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+              disabled={submitting}
+            />
+            <input
+              type="email"
+              placeholder="Email Address"
+              value={editFormData.email}
+              onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+              disabled={submitting}
+            />
+            <select
+              value={editFormData.role}
+              onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
+              disabled={submitting}
+            >
+              <option value="admin">Admin</option>
+              <option value="bloodbank">Blood Bank</option>
+              <option value="hospital">Hospital</option>
+              <option value="donor">Donor</option>
+            </select>
+            <div className="form-actions">
+              <button
+                className="btn btn-primary"
+                onClick={handleUpdateAdmin}
+                disabled={submitting}
+                type="button">
+                {submitting ? 'Updating...' : 'Update Admin'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  setShowEditForm(false);
+                  setEditingAdmin(null);
+                  setEditFormData({ name: '', email: '', role: 'admin' });
+                  setError('');
+                }}
+                disabled={submitting}
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Admins Table */}
+      <div className="table-container">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {admins.map((admin, idx) => (
+              <motion.tr
+                key={admin.id}
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: idx * 0.05 }}
+              >
+                <td className="name-cell">
+                  <div className="admin-avatar">{(admin.name || '?').charAt(0)}</div>
+                  {admin.name || '—'}
+                </td>
+                <td>{admin.email}</td>
+                <td>{admin.role}</td>
+                <td>
+                  <span className="status-badge" style={{ background: '#19875420', color: '#198754' }}>
+                    {admin.status
+                      ? admin.status.charAt(0).toUpperCase() + admin.status.slice(1)
+                      : 'Active'}
+                  </span>
+                </td>
+                <td className="actions-cell">
+                  <div className="action-buttons">
+                    <button type="button" className="btn-icon edit" onClick={() => handleEditAdmin(admin.id)} title="Edit">
+                      <Edit2 size={16} />
+                    </button>
+                    <button type="button" className="btn-icon delete" onClick={() => handleDeleteAdmin(admin.id)} title="Delete">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </td>
+              </motion.tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </motion.div>
+  );
+};
+
+// ============ SETTINGS COMPONENT ============
+const Settings = () => {
+  const [settings, setSettings] = useState({
+    siteName: 'BloodLink',
+    contactEmail: 'contact@bloodlink.pk',
+    contactPhone: '+92-300-1234567',
+    smsAPI: 'Twilio',
+    emailAPI: 'SendGrid',
+    enableNotifications: true,
+    enableEmergencyBroadcast: true,
+  });
+  const [settingsMessage, setSettingsMessage] = useState('');
+
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('bloodlinkSettings');
+    if (savedSettings) {
+      setSettings(JSON.parse(savedSettings));
+    }
+  }, []);
+
+  const handleSettingChange = (key, value) => {
+    setSettings({ ...settings, [key]: value });
+  };
+
+  const handleSaveSettings = () => {
+    localStorage.setItem('bloodlinkSettings', JSON.stringify(settings));
+    setSettingsMessage('Settings saved successfully.');
+    setTimeout(() => setSettingsMessage(''), 3000);
+    console.log('Settings saved:', settings);
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="admin-section">
+      <div className="section-header">
+        <h2>Settings ⚙️</h2>
+      </div>
+
+      {/* Settings Form */}
+      <div className="settings-form">
+        <div className="settings-group">
+          <h3>Website Configuration</h3>
+          <div className="form-group">
+            <label>Site Name</label>
+            <input
+              type="text"
+              value={settings.siteName}
+              onChange={(e) => handleSettingChange('siteName', e.target.value)}
+            />
+          </div>
+          <div className="form-group">
+            <label>Contact Email</label>
+            <input
+              type="email"
+              value={settings.contactEmail}
+              onChange={(e) => handleSettingChange('contactEmail', e.target.value)}
+            />
+          </div>
+          <div className="form-group">
+            <label>Contact Phone</label>
+            <input
+              type="tel"
+              value={settings.contactPhone}
+              onChange={(e) => handleSettingChange('contactPhone', e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="settings-group">
+          <h3>API Integration</h3>
+          <div className="form-group">
+            <label>SMS API Provider</label>
+            <select value={settings.smsAPI} onChange={(e) => handleSettingChange('smsAPI', e.target.value)}>
+              <option>Twilio</option>
+              <option>AWS SNS</option>
+              <option>Nexmo</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Email API Provider</label>
+            <select value={settings.emailAPI} onChange={(e) => handleSettingChange('emailAPI', e.target.value)}>
+              <option>SendGrid</option>
+              <option>AWS SES</option>
+              <option>Gmail</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="settings-group">
+          <h3>Features</h3>
+          <div className="toggle-row">
+            <div className="toggle-group">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={settings.enableNotifications}
+                  onChange={(e) => handleSettingChange('enableNotifications', e.target.checked)}
+                />
+                Enable Notifications
+              </label>
+            </div>
+            <div className="toggle-group toggle-group-right">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={settings.enableEmergencyBroadcast}
+                  onChange={(e) => handleSettingChange('enableEmergencyBroadcast', e.target.checked)}
+                />
+                Enable Emergency Broadcast
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="settings-actions">
+          <button type="button" className="btn btn-primary" onClick={handleSaveSettings}>
+            <CheckCircle size={18} /> Save Settings
+          </button>
+        </div>
+        {settingsMessage && <div className="form-feedback">{settingsMessage}</div>}
+      </div>
+    </motion.div>
+  );
+};
+
+// ============ MAIN ADMIN PANEL COMPONENT ============
+const AdminPanel = ({ onLogout, userData, onRefreshUserData }) => {
+  const [activeTab, setActiveTab] = useState('dashboard');
+
+  const adminTabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'donors', label: 'Donor Mgmt', icon: Users },
+    { id: 'requests', label: 'Blood Req', icon: Droplet },
+    { id: 'locations', label: 'Locations', icon: MapPin },
+    { id: 'notifications', label: 'Alerts', icon: Bell },
+    { id: 'admins', label: 'Admins', icon: ShieldCheck },
+    { id: 'settings', label: 'Settings', icon: SettingsIcon },
+  ];
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return <Dashboard />;
+      case 'donors':
+        return <DonorManagement />;
+      case 'requests':
+        return <BloodRequestsManagement />;
+      case 'locations':
+        return <LocationManagement />;
+      case 'notifications':
+        return <NotificationsSystem />;
+      case 'admins':
+        return <AdminManagement onRefreshUserData={onRefreshUserData} />;
+      case 'settings':
+        return <Settings />;
+      default:
+        return <Dashboard />;
+    }
+  };
+
+  return (
+    <div className="admin-panel">
+      {/* Topbar Navigation */}
+      <div className="admin-topbar">
         <div className="topbar-container">
           <div className="topbar-left">
-            <h1 className="topbar-title">Hospital Staff Dashboard</h1>
+            <h1 className="topbar-title">Admin Dashboard</h1>
           </div>
 
+          {/* Admin Navigation */}
           <nav className="topbar-nav">
-            <button
-              className={`topbar-nav-btn ${activeTab === 'requests' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab('requests');
-              }}
-            >
-              📋 My Requests
-            </button>
-            <button
-              className={`topbar-nav-btn ${activeTab === 'create' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab('create');
-                setShowForm(true);
-              }}
-            >
-              <Plus size={18} /> New Request
-            </button>
-            <button
-              className={`topbar-nav-btn ${activeTab === 'profile' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab('profile');
-              }}
-            >
-              👤 Profile
-            </button>
+            {adminTabs.map(tab => {
+              const Icon = tab.icon;
+              return (
+                <motion.button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`topbar-nav-btn ${activeTab === tab.id ? 'active' : ''}`}
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  title={tab.label}
+                >
+                  <Icon size={18} />
+                  <span>{tab.label}</span>
+                </motion.button>
+              );
+            })}
           </nav>
-
-          <div className="topbar-right">
-            <button
-              className={`notification-btn ${unreadNotifications > 0 ? 'has-unread' : ''}`}
-              onClick={() => setShowNotifications(!showNotifications)}
-            >
-              <Bell size={20} />
-              {unreadNotifications > 0 && (
-                <span className="notification-badge">{unreadNotifications}</span>
-              )}
-            </button>
-          </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="hospital-main">
-
-        {/* Notifications Dropdown */}
-        <AnimatePresence>
-          {showNotifications && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="notifications-dropdown"
-            >
-              <div className="notifications-header">
-                <h3>Notifications</h3>
-                <button onClick={() => setShowNotifications(false)}>
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="notifications-list">
-                {safeNotifications.map(notif => (
-                  <div
-                    key={notif.id}
-                    className={`notification-item ${!notif.read ? 'unread' : ''}`}
-                  >
-                    <div className="notification-icon">
-                      {notif.type === 'approval' && (
-                        <CheckCircle2 size={20} color="#28a745" />
-                      )}
-                      {notif.type === 'donor' && (
-                        <AlertTriangle size={20} color="#ffc107" />
-                      )}
-                      {notif.type === 'completed' && (
-                        <CheckCircle2 size={20} color="#17a2b8" />
-                      )}
-                      {notif.type === 'rejection' && (
-                        <AlertCircle size={20} color="#dc3545" />
-                      )}
-                    </div>
-                    <div className="notification-content">
-                      <p>{notif.message}</p>
-                      <span className="notification-time">{notif.timestamp}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
+      <div className="admin-content">
+        <AnimatePresence mode="wait">
+          <div key={activeTab}>
+            {renderContent()}
+          </div>
         </AnimatePresence>
-
-        {/* Requests Tab */}
-        {activeTab === 'requests' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="tab-content"
-          >
-            <div className="requests-header">
-              <h2>My Blood Requests</h2>
-              <button
-                className="btn-primary"
-                onClick={() => {
-                  setShowForm(true);
-                  setActiveTab('create');
-                }}
-              >
-                <Plus size={18} /> New Request
-              </button>
-            </div>
-
-            {requests.length === 0 ? (
-              <div className="empty-state">
-                <AlertCircle size={48} />
-                <p>No blood requests yet. Create your first request.</p>
-              </div>
-            ) : (
-              <div className="requests-table-wrapper">
-                <table className="requests-table">
-                  <thead>
-                    <tr>
-                      <th>Patient</th>
-                      <th>Blood Group</th>
-                      <th>Units</th>
-                      <th>Status</th>
-                      <th>Urgency</th>
-                      <th>Required Date</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {safeRequests.map(request => (
-                      <tr key={request._id || request.id}>
-                        <td>
-                          <span className="patient-name">{request.patient || request.patientName}</span>
-                        </td>
-                        <td>
-                          <span className="blood-group">{request.bloodGroup}</span>
-                        </td>
-                        <td>{request.units}</td>
-                        <td>
-                          <span className={`status-badge ${request.status.toLowerCase()}`}>
-                            {getStatusIcon(request.status)}
-                            {request.status}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`urgency-badge ${getUrgencyClass(request.urgency)}`}>
-                            {request.urgency === 'Emergency' && '🚨'}
-                            {request.urgency === 'Urgent' && '⚠️'}
-                            {request.urgency === 'Normal' && '✓'}
-                            {request.urgency}
-                          </span>
-                        </td>
-                        <td>{request.date ? new Date(request.date).toLocaleDateString() : 'N/A'}</td>
-                        <td>
-                          <div className="action-buttons">
-                            <button
-                              className="action-btn view-btn"
-                              onClick={() => handleViewDetails(request)}
-                              title="View Details"
-                            >
-                              <Eye size={16} />
-                            </button>
-                            <button
-                              className="action-btn edit-btn"
-                              onClick={() => handleEditRequest(request)}
-                              title="Edit Request"
-                            >
-                              <Edit2 size={16} />
-                            </button>
-                            <button
-                              className="action-btn delete-btn"
-                              onClick={() => handleDeleteRequest(request._id || request.id)}
-                              title="Delete Request"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {/* Create Request Tab */}
-        {activeTab === 'create' && showForm && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="tab-content"
-          >
-            <div className="form-container">
-              <div className="form-header">
-                <h2>Create Blood Request</h2>
-                <p>Fill in all the details below to submit a blood request</p>
-              </div>
-
-              <form onSubmit={handleSubmitRequest} className="blood-request-form">
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label>Patient Name *</label>
-                    <input
-                      type="text"
-                      name="patient"
-                      value={formData.patient}
-                      onChange={handleFormChange}
-                      placeholder="e.g., Muhammad Hassan"
-                      className={formErrors.patient ? 'error' : ''}
-                    />
-                    {formErrors.patient && (
-                      <span className="error-message">{formErrors.patient}</span>
-                    )}
-                  </div>
-
-                  <div className="form-group">
-                    <label>Blood Group *</label>
-                    <select
-                      name="bloodGroup"
-                      value={formData.bloodGroup}
-                      onChange={handleFormChange}
-                    >
-                      {BLOOD_GROUPS.map(group => (
-                        <option key={group} value={group}>
-                          {group}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Units Required *</label>
-                    <input
-                      type="number"
-                      name="units"
-                      value={formData.units}
-                      onChange={handleFormChange}
-                      placeholder="1"
-                      min="1"
-                      max="10"
-                      className={formErrors.units ? 'error' : ''}
-                    />
-                    {formErrors.units && (
-                      <span className="error-message">{formErrors.units}</span>
-                    )}
-                  </div>
-
-                  <div className="form-group">
-                    <label>Urgency Level *</label>
-                    <div className="urgency-select">
-                      {URGENCY_LEVELS.map(level => (
-                        <button
-                          key={level}
-                          type="button"
-                          className={`urgency-option ${formData.urgency === level ? 'selected' : ''} ${getUrgencyClass(level)}`}
-                          onClick={() =>
-                            setFormData(prev => ({ ...prev, urgency: level }))
-                          }
-                        >
-                          {level === 'Emergency' && '🚨'}
-                          {level === 'Urgent' && '⚠️'}
-                          {level === 'Normal' && '✓'}
-                          {level}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Location *</label>
-                    <div className="location-input">
-                      <MapPin size={18} />
-                      <input
-                        type="text"
-                        name="location"
-                        value={formData.location}
-                        onChange={handleFormChange}
-                        placeholder="Enter hospital location or auto-detect"
-                        className={formErrors.location ? 'error' : ''}
-                      />
-                    </div>
-                    {formErrors.location && (
-                      <span className="error-message">{formErrors.location}</span>
-                    )}
-                  </div>
-
-                  <div className="form-group">
-                    <label>Required Date *</label>
-                    <input
-                      type="date"
-                      name="date"
-                      value={formData.date}
-                      onChange={handleFormChange}
-                      className={formErrors.date ? 'error' : ''}
-                    />
-                    {formErrors.date && (
-                      <span className="error-message">{formErrors.date}</span>
-                    )}
-                  </div>
-
-                  <div className="form-group">
-                    <label>Contact Number *</label>
-                    <div className="contact-input">
-                      <Phone size={18} />
-                      <input
-                        type="tel"
-                        name="contact"
-                        value={formData.contact}
-                        onChange={handleFormChange}
-                        placeholder="e.g., 03001234567"
-                        className={formErrors.contact ? 'error' : ''}
-                      />
-                    </div>
-                    {formErrors.contact && (
-                      <span className="error-message">{formErrors.contact}</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="form-group full-width">
-                  <label>Additional Notes</label>
-                  <textarea
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleFormChange}
-                    placeholder="e.g., Post-surgery transfusion, specific requirements, etc."
-                    rows="4"
-                  />
-                </div>
-
-                <div className="form-actions">
-                  <button type="submit" className="btn-primary">
-                    <CheckCircle2 size={18} /> {isEditing ? 'Update Request' : 'Submit Request'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => {
-                      setShowForm(false);
-                      setIsEditing(false);
-                      setEditId(null);
-                      setActiveTab('requests');
-                      setFormData({
-                        patient: '',
-                        bloodGroup: 'O+',
-                        units: 1,
-                        urgency: 'Normal',
-                        location: '',
-                        date: '',
-                        contact: '',
-                        notes: '',
-                      });
-                      setFormErrors({});
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Profile Tab */}
-        {activeTab === 'profile' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="tab-content"
-          >
-            <div className="profile-container">
-              <div className="profile-grid">
-                {/* Profile Info Card */}
-                <div className="profile-card">
-                  <div className="profile-card-header">
-                    <h2>Hospital Information</h2>
-                    {!isEditingProfile && (
-                      <button
-                        className="btn-primary btn-sm"
-                        onClick={() => setIsEditingProfile(true)}
-                      >
-                        <Edit2 size={14} /> Edit
-                      </button>
-                    )}
-                  </div>
-
-                  {profileStatus.message && (
-                    <div className={`status-banner ${profileStatus.type}`}>
-                      {profileStatus.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-                      <span>{profileStatus.message}</span>
-                    </div>
-                  )}
-
-                  {isEditingProfile ? (
-                    <form onSubmit={handleUpdateProfile} className="profile-edit-form">
-                      <div className="form-group">
-                        <label>Hospital Name</label>
-                        <input
-                          type="text"
-                          name="hospitalName"
-                          value={profileFormData.hospitalName}
-                          onChange={handleProfileChange}
-                          placeholder="Hospital Name"
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Staff Name</label>
-                        <input
-                          type="text"
-                          name="name"
-                          value={profileFormData.name}
-                          onChange={handleProfileChange}
-                          placeholder="Staff Name"
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Email Address</label>
-                        <input
-                          type="email"
-                          name="email"
-                          value={profileFormData.email}
-                          onChange={handleProfileChange}
-                          placeholder="Email Address"
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Contact Number</label>
-                        <input
-                          type="tel"
-                          name="phone"
-                          value={profileFormData.phone}
-                          onChange={handleProfileChange}
-                          placeholder="Contact Number"
-                          required
-                        />
-                      </div>
-                      <div className="form-actions profile-actions">
-                        <button type="submit" className="btn-primary" disabled={profileLoading}>
-                          {profileLoading ? 'Saving...' : 'Save Changes'}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-secondary"
-                          onClick={() => {
-                            setIsEditingProfile(false);
-                            setProfileStatus({ message: '', type: '' });
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <div className="profile-info-display">
-                      <div className="info-group">
-                        <label>Hospital Name</label>
-                        <p>{profileFormData.hospitalName}</p>
-                      </div>
-                      <div className="info-group">
-                        <label>Staff Name</label>
-                        <p>{profileFormData.name}</p>
-                      </div>
-                      <div className="info-group">
-                        <label>Email Address</label>
-                        <div className="info-with-icon">
-                          <Mail size={16} />
-                          <p>{profileFormData.email}</p>
-                        </div>
-                      </div>
-                      <div className="info-group">
-                        <label>Contact Number</label>
-                        <div className="info-with-icon">
-                          <Phone size={16} />
-                          <p>{profileFormData.phone}</p>
-                        </div>
-                      </div>
-                      <div className="info-group">
-                        <label>Account Role</label>
-                        <p style={{ textTransform: 'capitalize', fontWeight: 'bold', color: 'var(--primary-color)' }}>
-                          {profileFormData.role}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Account Settings Card */}
-                <div className="profile-card">
-                  <h2>Account Settings</h2>
-                  <div className="settings-section">
-                    <h3>Security</h3>
-                    <button
-                      className="btn-secondary"
-                      onClick={() => setShowPasswordModal(true)}
-                    >
-                      <Lock size={16} /> Change Password
-                    </button>
-                  </div>
-                  <div className="settings-section">
-                    <h3>Account Status</h3>
-                    <div className="status-info">
-                      <span className="status-badge verified" style={{ textTransform: 'capitalize' }}>
-                        {userData?.role === 'admin' ? '🛡️ Admin' : '✅ ' + (userData?.role || 'Verified')}
-                      </span>
-                      <p>Your account level: {userData?.role || 'hospital'}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
       </div>
-
-      {/* Request Details Modal */}
-      <AnimatePresence>
-        {showRequestDetails && selectedRequest && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="modal-overlay"
-            onClick={() => setShowRequestDetails(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="modal-content"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="modal-header">
-                <h2>Request Details</h2>
-                <button
-                  className="modal-close"
-                  onClick={() => setShowRequestDetails(false)}
-                >
-                  <X size={24} />
-                </button>
-              </div>
-              <div className="modal-body">
-                <div className="detail-grid">
-                  <div className="detail-item">
-                    <span className="detail-label">Patient Name</span>
-                    <span className="detail-value">{selectedRequest.patient || selectedRequest.patientName}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Blood Group</span>
-                    <span className="detail-value blood-group">
-                      {selectedRequest.bloodGroup}
-                    </span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Units Required</span>
-                    <span className="detail-value">{selectedRequest.units}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Status</span>
-                    <span
-                      className={`status-badge ${selectedRequest.status.toLowerCase()}`}
-                    >
-                      {getStatusIcon(selectedRequest.status)}
-                      {selectedRequest.status}
-                    </span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Urgency</span>
-                    <span
-                      className={`urgency-badge ${getUrgencyClass(selectedRequest.urgency)}`}
-                    >
-                      {selectedRequest.urgency === 'Emergency' && '🚨'}
-                      {selectedRequest.urgency === 'Urgent' && '⚠️'}
-                      {selectedRequest.urgency === 'Normal' && '✓'}
-                      {selectedRequest.urgency}
-                    </span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Required Date</span>
-                    <span className="detail-value">{selectedRequest.date}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Hospital</span>
-                    <span className="detail-value">{selectedRequest.hospital}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Location</span>
-                    <span className="detail-value">{selectedRequest.location}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Contact Number</span>
-                    <span className="detail-value">{selectedRequest.contact}</span>
-                  </div>
-                  <div className="detail-item full-width">
-                    <span className="detail-label">Additional Notes</span>
-                    <span className="detail-value">
-                      {selectedRequest.notes || selectedRequest.additionalNotes || 'No additional notes'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Password Change Modal */}
-      <AnimatePresence>
-        {showPasswordModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="modal-overlay"
-            onClick={() => setShowPasswordModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="modal-content"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="modal-header">
-                <h2>Change Password</h2>
-                <button
-                  className="modal-close"
-                  onClick={() => {
-                    setShowPasswordModal(false);
-                    setPasswordStatus({ message: '', type: '' });
-                  }}
-                >
-                  <X size={24} />
-                </button>
-              </div>
-
-              {passwordStatus.message && (
-                <div className={`password-status-banner ${passwordStatus.type}`}>
-                  {passwordStatus.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-                  <span>{passwordStatus.message}</span>
-                </div>
-              )}
-
-              <form onSubmit={handlePasswordSubmit} className="password-form">
-                <div className="form-group">
-                  <label>Current Password</label>
-                  <input
-                    type="password"
-                    name="oldPassword"
-                    value={passwordChange.oldPassword}
-                    onChange={handlePasswordChange}
-                    placeholder="Enter your current password"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>New Password</label>
-                  <input
-                    type="password"
-                    name="newPassword"
-                    value={passwordChange.newPassword}
-                    onChange={handlePasswordChange}
-                    placeholder="Enter new password"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Confirm Password</label>
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={passwordChange.confirmPassword}
-                    onChange={handlePasswordChange}
-                    placeholder="Confirm new password"
-                    required
-                  />
-                </div>
-                <div className="form-actions modal-actions">
-                  <button type="submit" className="btn-primary">
-                    Update Password
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => setShowPasswordModal(false)}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </section>
+    </div>
   );
 };
 
-export default HospitalPanel;
+export default AdminPanel;
