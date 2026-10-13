@@ -110,7 +110,7 @@ const NotificationBell = ({ target }) => {
                   aria-label="Delete all notifications"
                   title="Delete all notifications"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={18} strokeWidth={2.5} aria-hidden="true" />
                   <span>{deletingAll ? 'Deleting...' : 'Delete all'}</span>
                 </button>
                 <button type="button" onClick={() => setIsOpen(false)} aria-label="Close notifications">
@@ -148,7 +148,7 @@ const NotificationBell = ({ target }) => {
                         aria-label={`Delete ${notification.title || 'notification'}`}
                         title="Delete notification"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={18} strokeWidth={2.5} aria-hidden="true" />
                         <span>Delete</span>
                       </button>
                     </div>
