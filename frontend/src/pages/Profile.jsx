@@ -27,27 +27,6 @@ const Profile = ({ userData, onLogout }) => {
     }
   }, [userData]);
 
-  // Fetch latest user data when component mounts
-  useEffect(() => {
-    const fetchLatestUserData = async () => {
-      try {
-        const res = await api.getCurrentUser();
-        const user = res.data?.user || res.data;
-        if (user) {
-          setCurrentUserData(user);
-          localStorage.setItem('bloodlinkUser', JSON.stringify(user));
-        }
-      } catch (error) {
-        console.error("Error fetching latest user data:", error);
-        if (userData) {
-          setCurrentUserData(userData);
-        }
-      }
-    };
-
-    fetchLatestUserData();
-  }, []);
-
   const role     = (currentUserData?.role || 'donor').toLowerCase();
   const name     = currentUserData?.name  || 'User';
   const email    = currentUserData?.email || '';
