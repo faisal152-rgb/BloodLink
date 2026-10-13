@@ -1,232 +1,227 @@
-import React, { useState, useEffect } from 'react';
-import Layout from './components/layout/Layout';
-import Home from './pages/Home';
-import Donors from './pages/Donors';
-import Request from './pages/Request';
-import AuthPage from './pages/auth';
-import ControlPanel from './pages/adminpanel';
-import HospitalPanel from './pages/HospitalPanel';
-import BloodBankPanel from './pages/BloodBankPanel';
-import Profile from './pages/Profile';
-import * as api from './services/api';
+import React, { useState } from 'react';
+import { Droplet, User, ShieldCheck, Building2, LayoutDashboard, LogOut, Menu, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-// Helper: Map URL pathname to internal section
-const pathToSection = (path) => {
-  const cleanPath = (path || window.location.pathname).toLowerCase().replace(/\/$/, '') || '/';
-  if (['/login', '/auth', '/register', '/signin'].includes(cleanPath)) return 'auth_login';
-  if (cleanPath === '/request') return 'request';
-  if (['/donor', '/donors'].includes(cleanPath)) return 'donors';
-  if (cleanPath === '/profile') return 'profile';
-  if (['/controlpanel', '/admin', '/dashboard'].includes(cleanPath)) return 'controlpanel';
-  return 'home';
+const ROLE_CONFIG = {
+  admin: { label: 'Admin', icon: ShieldCheck, color: '#dc3545' },
+  hospital: { label: 'Hospital', icon: Building2, color: '#0d6efd' },
+  bloodbank: { label: 'Blood Bank', icon: Droplet, color: '#198754' },
+  donor: { label: 'Donor', icon: User, color: '#6f42c1' },
 };
 
-// Helper: Map internal section to URL pathname
-const sectionToPath = (section) => {
-  switch (section) {
-    case 'auth_login': return '/login';
-    case 'request': return '/request';
-    case 'donors': return '/donor';
-    case 'profile': return '/profile';
-    case 'controlpanel': return '/controlpanel';
-    case 'home':
-    default:
-      return '/home';
-  }
-};
+const Navbar = ({ activeSection, setActiveSection, isLoggedIn, isAdmin, onLogout, userData, onNavItemClick }) => {
+  const [showMenu, setShowMenu] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-function App() {
-  const [activeSection, setActiveSection] = useState(() => {
-    // 1. First priority: current URL in the browser
-    const fromUrl = pathToSection(window.location.pathname);
-    if (window.location.pathname !== '/' && window.location.pathname !== '') {
-      return fromUrl;
-    }
-    // 2. Second priority: saved section
-    return localStorage.getItem('bloodlinkActiveSection') || 'home';
-  });
+  const role = typeof userData?.role === 'string'
+    ? userData.role.trim().toLowerCase()
+    : 'donor';
+  const roleConf = ROLE_CONFIG[role] || ROLE_CONFIG.donor;
+  const RoleIcon = roleConf.icon;
+  const userName = userData?.name || 'User';
+  const userEmail = userData?.email || '';
+  // initials from name
+  const initials = userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userData, setUserData] = useState(null);
-  const [donors, setDonors] = useState([]);
-
-  // Check URL pathname and OAuth Callback on mount
-  useEffect(() => {
-    // Check for OAuth Callback parameters in URL: /auth/callback?accesstoken=...
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('accesstoken');
-
-    if (token) {
-      const user = {
-        id: urlParams.get('id'),
-        name: urlParams.get('name'),
-        email: urlParams.get('email'),
-        role: urlParams.get('role') || 'donor',
-        avatar: urlParams.get('avatar'),
-        hospitalName: urlParams.get('hospitalName'),
-        phone: urlParams.get('phone'),
-        verified: urlParams.get('verified') === 'true',
-      };
-
-      localStorage.setItem('bloodlinkToken', token);
-      localStorage.setItem('bloodlinkUser', JSON.stringify(user));
-      setIsLoggedIn(true);
-      setUserData(user);
-
-      const target = ['admin', 'hospital', 'bloodbank'].includes(user.role) ? 'controlpanel' : 'profile';
-      navigateTo(target);
-      return;
-    }
-
-    // Existing session check
-    const storedUser = localStorage.getItem('bloodlinkUser');
-    const storedToken = localStorage.getItem('bloodlinkToken');
-    if (storedUser && storedToken) {
-      setIsLoggedIn(true);
-      const parsedUser = JSON.parse(storedUser);
-      setUserData(parsedUser);
-      }).catch(() => {}); // silently fail if offline
-      // If user came to root or home while logged in, role-based default
-      const currentSection = pathToSection(window.location.pathname);
-      if (currentSection === 'home' && !localStorage.getItem('bloodlinkActiveSection')) {
-        navigateTo(parsedUser.role === 'donor' ? 'profile' : 'controlpanel');
-      }
-    }
-
-    fetchDonors();
-
-    // Listen to browser Back / Forward buttons
-    const handlePopState = () => {
-      const target = pathToSection(window.location.pathname);
-      setActiveSection(target);
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
-  // Sync URL and localStorage whenever activeSection changes
-  const navigateTo = (section) => {
-    setActiveSection(section);
-    localStorage.setItem('bloodlinkActiveSection', section);
-
-    const targetPath = sectionToPath(section);
-    if (window.location.pathname !== targetPath) {
-      window.history.pushState(null, '', targetPath);
-    }
-  };
-
-  const fetchDonors = async () => {
-    try {
-      const res = await api.getDonors();
-      const donorsList = Array.isArray(res.data) ? res.data : (res.data?.donors || []);
-      setDonors(donorsList.filter(d => d.status === 'approved'));
-    } catch (error) {
-      console.error("Error fetching donors:", error);
-    }
+  const handleLogoClick = () => {
+    onNavItemClick('home');
+    setShowMenu(false);
+    setMobileMenuOpen(false);
   };
 
   const handleNavItemClick = (key) => {
-    navigateTo(key);
-
-    const scrollId = key === 'donors' ? 'donors' : key;
-    if (['home', 'donors', 'request'].includes(key)) {
-      document.getElementById(scrollId)?.scrollIntoView({ behavior: 'smooth' });
-    }
+    onNavItemClick(key);
+    setShowMenu(false);
+    setMobileMenuOpen(false);
   };
 
-  const handleFindDonor = () => handleNavItemClick('donors');
-  const handleRequestBlood = () => handleNavItemClick('request');
+  // Panel label depends on role
+  const panelLabel = role === 'admin'
+    ? 'Admin Panel'
+    : role === 'hospital'
+      ? 'Hospital Panel'
+      : role === 'bloodbank'
+        ? 'BloodBank Panel'
+        : 'Dashboard';
 
-  const handleLogin = (data, token) => {
-    setIsLoggedIn(true);
-    setUserData(data);
-
-    if (token) {
-      localStorage.setItem('bloodlinkToken', token);
-    }
-    localStorage.setItem('bloodlinkUser', JSON.stringify(data));
-
-    if (['admin', 'hospital', 'bloodbank'].includes(data.role)) {
-      navigateTo('controlpanel');
-    } else {
-      navigateTo('profile');
-    }
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setUserData(null);
-    navigateTo('home');
-
-    localStorage.removeItem('bloodlinkToken');
-    localStorage.removeItem('bloodlinkUser');
-  };
-
-  const refreshUserData = async () => {
-    try {
-      const res = await api.getCurrentUser();
-      const updatedUser = res.data?.user || res.data;
-      if (updatedUser) {
-        setUserData(updatedUser);
-        localStorage.setItem('bloodlinkUser', JSON.stringify(updatedUser));
-      }
-    } catch (error) {
-      console.error("Error refreshing user data:", error);
-    }
-  };
-
-  const renderSection = () => {
-    if (activeSection === 'auth_login') {
-      return <AuthPage onLogin={handleLogin} />;
-    }
-    if (activeSection === 'controlpanel' && isLoggedIn) {
-      if (userData?.role === 'hospital') {
-        return <HospitalPanel onLogout={handleLogout} userData={userData} onRefreshDonors={fetchDonors} onRefreshUserData={refreshUserData} />;
-      }
-      if (userData?.role === 'bloodbank') {
-        return <BloodBankPanel onLogout={handleLogout} userData={userData} onRefreshDonors={fetchDonors} onRefreshUserData={refreshUserData} />;
-      }
-      return <ControlPanel onLogout={handleLogout} userData={userData} onRefreshDonors={fetchDonors} onRefreshUserData={refreshUserData} />;
-    }
-    if (activeSection === 'profile') {
-      if (isLoggedIn) {
-        return <Profile userData={userData} onLogout={handleLogout} />;
-      }
-      return <AuthPage onLogin={handleLogin} />;
-    }
-    if (activeSection === 'donors') {
-      return (
-        <>
-          <Home onFindDonor={handleFindDonor} onRequestBlood={handleRequestBlood} />
-          <Donors donors={donors} />
-          <Request isLoggedIn={isLoggedIn} setActiveSection={navigateTo} />
-        </>
-      );
-    }
-    // Default home
-    return (
-      <>
-        <Home onFindDonor={handleFindDonor} onRequestBlood={handleRequestBlood} />
-        <Donors donors={donors} />
-        <Request isLoggedIn={isLoggedIn} setActiveSection={navigateTo} />
-      </>
-    );
-  };
+  const navItems = [
+    { label: 'Home', key: 'home', href: '/home' },
+    { label: 'Donors', key: 'donors', href: '/donor' },
+    { label: 'Request', key: 'request', href: '/request' }
+  ];
 
   return (
-    <Layout
-      activeSection={activeSection}
-      setActiveSection={navigateTo}
-      isLoggedIn={isLoggedIn}
-      isAdmin={isLoggedIn}
-      onLogout={handleLogout}
-      userData={userData}
-      onAdminClick={() => navigateTo('auth_login')}
-      onNavItemClick={handleNavItemClick}
-    >
-      {renderSection()}
-    </Layout>
-  );
-}
+    <header className="app-header">
+      <div className="container nav-container">
+        {/* Logo */}
+        <div className="logo-group" onClick={handleLogoClick} style={{ cursor: 'pointer' }}>
+          <Droplet fill="#dc3545" size={32} />
+          <span className="logo-text">BloodLink</span>
+        </div>
 
-export default App;
+        {/* Nav Links (Desktop) */}
+        <nav className="nav-links">
+          {navItems.map((item) => (
+            <a
+              key={item.key}
+              href={item.href}
+              className={`nav-item ${activeSection === item.key ? 'active' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                handleNavItemClick(item.key);
+              }}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+
+        {/* Right side */}
+        <div className="nav-actions">
+          {isLoggedIn ? (
+            <>
+              <a 
+                href="/request" 
+                className="nav-cta desktop-only" 
+                onClick={(e) => { 
+                  e.preventDefault(); 
+                  handleNavItemClick('request'); 
+                }}
+              >
+                Urgent Request
+              </a>
+              <div className="nav-profile-container">
+                <div className="nav-profile-wrap" onClick={() => setShowMenu(!showMenu)}>
+                  <div className="nav-avatar" style={{ background: roleConf.color }}>
+                    {initials}
+                  </div>
+                  <motion.div
+                    className="online-indicator"
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                  />
+                </div>
+
+                <AnimatePresence>
+                  {showMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="profile-dropdown"
+                    >
+                      {/* User Info */}
+                      <div className="dropdown-user-info">
+                        <div className="user-role-badge" style={{ color: roleConf.color }}>
+                          <RoleIcon size={16} />
+                          <span>:{roleConf.label}</span>
+                        </div>
+                        <span className="user-name">{userName}</span>
+                        <span className="user-email">{userEmail}</span>
+                      </div>
+
+                      <div className="dropdown-divider" />
+
+                      {/* Profile */}
+                      <button
+                        className="dropdown-item"
+                        onClick={() => { setActiveSection('profile'); setShowMenu(false); }}
+                      >
+                        <User size={18} /> My Profile
+                      </button>
+
+                      {/* Panel */}
+                      {['admin', 'hospital', 'bloodbank'].includes(role) && (
+                        <button
+                          className="dropdown-item"
+                          onClick={() => { setActiveSection('controlpanel'); setShowMenu(false); }}
+                          style={{ color: roleConf.color }}
+                        >
+                          <LayoutDashboard size={18} /> {panelLabel}
+                        </button>
+                      )}
+
+                      <div className="dropdown-divider" />
+
+                      {/* Logout */}
+                      <button
+                        className="dropdown-item logout"
+                        onClick={() => { onLogout(); setShowMenu(false); }}
+                      >
+                        <LogOut size={18} /> Logout
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </>
+          ) : (
+            <>
+              <a 
+                href="/request" 
+                className="nav-cta desktop-only" 
+                onClick={(e) => { 
+                  e.preventDefault(); 
+                  handleNavItemClick('request'); 
+                }}
+              >
+                Urgent Request
+              </a>
+              <button className="btn-login" onClick={() => setActiveSection('auth_login')}>
+                <User size={18} /> Login
+              </button>
+            </>
+          )}
+
+          {/* Hamburger Toggle Button */}
+          <button
+            className="mobile-hamburger-btn"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle Menu"
+          >
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Menu Drawer */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mobile-nav-drawer"
+          >
+            <div className="container mobile-nav-content">
+              {navItems.map((item) => (
+                <a
+                  key={item.key}
+                  href={item.href}
+                  className={`mobile-nav-link ${activeSection === item.key ? 'active' : ''}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleNavItemClick(item.key);
+                  }}
+                >
+                  {item.label}
+                </a>
+              ))}
+              <a
+                href="/request"
+                className="mobile-nav-cta"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleNavItemClick('request');
+                }}
+              >
+                Urgent Request
+              </a>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </header>
+  );
+};
+export default Navbar;
