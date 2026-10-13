@@ -101,24 +101,35 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0 0.55rem;
-  color: var(--primary-red);
-  background: rgba(220, 53, 69, 0.07);
-  border: 1px solid rgba(220, 53, 69, 0.2);
+  color: #b42332;
+  background: rgba(220, 53, 69, 0.08);
+  border: 1px solid rgba(180, 35, 50, 0.45);
   border-radius: 7px;
   font-size: 0.78rem;
+  font-weight: 600;
 }
 
 .donor-notifications-header .donor-notifications-delete-all:hover:not(:disabled) {
-  color: var(--primary-red);
-  background: rgba(220, 53, 69, 0.12);
+  color: #8f1724;
+  background: rgba(220, 53, 69, 0.14);
 }
 
 .donor-notifications-header .donor-notifications-delete-all:disabled {
-  cursor: wait;
-  color: var(--secondary-text);
-  background: transparent;
-  border-color: var(--border-color);
-  opacity: 0.8;
+  cursor: not-allowed;
+  color: #8f1724;
+  background: rgba(220, 53, 69, 0.06);
+  border-color: rgba(180, 35, 50, 0.35);
+  opacity: 1;
+}
+
+.donor-notifications-delete-all svg,
+.donor-notifications-delete svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  color: currentColor;
+  stroke: currentColor;
 }
 
 .donor-notifications-header button:hover {
@@ -166,9 +177,9 @@
   gap: 0.25rem;
   margin: -0.35rem -0.4rem 0 0;
   padding: 0 0.4rem;
-  color: var(--primary-red);
-  background: rgba(220, 53, 69, 0.07);
-  border: 1px solid rgba(220, 53, 69, 0.2);
+  color: #b42332;
+  background: rgba(220, 53, 69, 0.08);
+  border: 1px solid rgba(180, 35, 50, 0.45);
   border-radius: 7px;
   cursor: pointer;
   transition: color 160ms ease, background 160ms ease;
@@ -176,8 +187,8 @@
 }
 
 .donor-notifications-delete:hover:not(:disabled) {
-  color: var(--primary-red);
-  background: rgba(220, 53, 69, 0.12);
+  color: #8f1724;
+  background: rgba(220, 53, 69, 0.14);
 }
 
 .donor-notifications-delete:focus-visible {
