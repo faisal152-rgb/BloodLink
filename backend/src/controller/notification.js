@@ -10,9 +10,20 @@ async function getnotifications(req, res) {
     const publicNotifications = target && target !== 'all'
       ? { target: { $in: [target, 'all'] } }
       : { target: 'all' };
-    const filter = isAdminListingAll
-      ? {}
-      : { $or: [publicNotifications, { recipient: req.user.id || req.user._id }] };
+    const filter = {
+      $and: [
+        isAdminListingAll
+          ? {}
+          : { $or: [publicNotifications, { recipient: req.user.id || req.user._id }] },
+        {
+          $or: [
+            { expiresAt: { $exists: false } },
+            { expiresAt: null },
+            { expiresAt: { $gt: new Date() } },
+          ],
+        },
+      ],
+    };
 
     if (title && Redis && isAdminListingAll) {
       try {
@@ -77,17 +88,40 @@ async function addnotification(req, res) {
   }
 };
 
-async function dismissWelcomeNotification(req, res) {
+async function markWelcomeNotificationViewed(req, res) {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return res.status(400).json({ success: false, message: 'Invalid notification ID' });
   }
 
   try {
-    await Notification.deleteOne({
-      _id: req.params.id,
-      recipient: req.user.id || req.user._id,
-      type: 'welcome',
-    });
+    const expiresAt = new Date(Date.now() + 30_000);
+    const result = await Notification.updateOne(
+      {
+        _id: req.params.id,
+        recipient: req.user.id || req.user._id,
+        type: 'welcome',
+        $or: [
+          { expiresAt: { $exists: false } },
+          { expiresAt: null },
+        ],
+      },
+      { $set: { expiresAt } }
+    );
+
+    if (result.modifiedCount === 1) {
+      const timer = setTimeout(async () => {
+        try {
+          await Notification.deleteOne({
+            _id: req.params.id,
+            type: 'welcome',
+            expiresAt: { $lte: new Date() },
+          });
+        } catch (error) {
+          console.error('Failed to delete expired welcome notification:', error);
+        }
+      }, Math.max(0, expiresAt.getTime() - Date.now()));
+      timer.unref();
+    }
 
     return res.sendStatus(204);
   } catch (error) {
@@ -95,4 +129,8 @@ async function dismissWelcomeNotification(req, res) {
   }
 }
 
-module.exports = { getnotifications, addnotification, dismissWelcomeNotification };
+module.exports = {
+  getnotifications,
+  addnotification,
+  markWelcomeNotificationViewed,
+};
