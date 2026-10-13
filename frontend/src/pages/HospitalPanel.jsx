@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -31,6 +31,7 @@ const HospitalPanel = ({ userData, onLogout, onRefreshUserData }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [requests, setRequests] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const welcomeDismissalsInFlight = useRef(new Set());
 
   // Safe array helpers
   const safeRequests = Array.isArray(requests) ? requests : [];
@@ -59,6 +60,30 @@ const HospitalPanel = ({ userData, onLogout, onRefreshUserData }) => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!showNotifications || loading) return;
+
+    const welcomeIds = notifications
+      .filter((notification) => notification.type === 'welcome')
+      .map((notification) => notification._id || notification.id)
+      .filter((id) => id && !welcomeDismissalsInFlight.current.has(id));
+
+    welcomeIds.forEach((id) => welcomeDismissalsInFlight.current.add(id));
+
+    welcomeIds.forEach(async (id) => {
+      try {
+        await api.dismissWelcomeNotification(id);
+        setNotifications((current) =>
+          current.filter((notification) => (notification._id || notification.id) !== id)
+        );
+      } catch (error) {
+        console.error('Error dismissing viewed welcome notification:', error);
+      } finally {
+        welcomeDismissalsInFlight.current.delete(id);
+      }
+    });
+  }, [showNotifications, loading, notifications]);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showRequestDetails, setShowRequestDetails] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
