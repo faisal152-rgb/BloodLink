@@ -1,51 +1,41 @@
 const Notification = require('../models/Notification');
-const Redis = require('../config/redis');
 const mongoose = require('mongoose');
+
+const getUserId = (req) => new mongoose.Types.ObjectId(req.user.id || req.user._id);
+
+const getVisibleNotificationsFilter = (user, userId) => {
+  if (user.role === 'admin') {
+    return {};
+  }
+
+  return {
+    $or: [
+      { target: { $in: [user.role, 'all'] } },
+      { recipient: userId },
+    ],
+  };
+};
 
 // Get all notifications
 async function getnotifications(req, res) {
-  const { title, target } = req.query;
+  const { target } = req.query;
   try {
     const isAdminListingAll = req.user.role === 'admin' && !target;
-    const userId = req.user.id || req.user._id;
+    const userId = getUserId(req);
     const notificationTarget = req.user.role === 'admin' && target
       ? target
       : req.user.role;
-    const visibleNotifications = {
-      $or: [
-        { target: { $in: [notificationTarget, 'all'] } },
-        { recipient: userId },
+    const visibilityFilter = isAdminListingAll
+      ? {}
+      : getVisibleNotificationsFilter({ ...req.user, role: notificationTarget }, userId);
+    const filter = {
+      $and: [
+        visibilityFilter,
+        { dismissedBy: { $ne: userId } },
       ],
     };
-    const filter = isAdminListingAll
-      ? {}
-      : {
-        $and: [
-          visibleNotifications,
-          { dismissedBy: { $ne: userId } },
-        ],
-      };
-
-    if (title && Redis && isAdminListingAll) {
-      try {
-        const cachedNotifications = await Redis.get(`notifications:${title}`);
-        if (cachedNotifications) {
-          return res.status(200).json(JSON.parse(cachedNotifications));
-        }
-      } catch (redisErr) {
-        console.warn("Redis get warning:", redisErr.message);
-      }
-    }
 
     const notifications = await Notification.find(filter).sort({ timestamp: -1, createdAt: -1 });
-
-    if (title && Redis && isAdminListingAll) {
-      try {
-        await Redis.set(`notifications:${title}`, JSON.stringify(notifications));
-      } catch (redisErr) {
-        console.warn("Redis set warning:", redisErr.message);
-      }
-    }
     res.status(200).json(notifications);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -60,14 +50,6 @@ async function addnotification(req, res) {
       return res.status(400).json({ success: false, message: 'Notification message is required' });
     }
 
-    if (title && Redis) {
-      try {
-        await Redis.del(`notifications:${title}`);
-      } catch (redisErr) {
-        console.warn("Redis del warning:", redisErr.message);
-      }
-    }
-
     const notification = await Notification.create({
       title: title?.trim() || 'Broadcast Announcement',
       message: message.trim(),
@@ -76,13 +58,6 @@ async function addnotification(req, res) {
       timestamp: new Date()
     });
 
-    if (title && Redis) {
-      try {
-        await Redis.set(`notifications:${title}`, JSON.stringify(notification));
-      } catch (redisErr) {
-        console.warn("Redis set warning:", redisErr.message);
-      }
-    }
     res.status(201).json(notification);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -95,20 +70,18 @@ async function deleteNotification(req, res) {
   }
 
   try {
-    const userId = req.user.id || req.user._id;
-    await Notification.updateOne(
-      {
-        _id: req.params.id,
-        $or: [
-          { recipient: userId },
-          {
-            recipient: null,
-            target: { $in: [req.user.role, 'all'] },
-          },
-        ],
-      },
+    const userId = getUserId(req);
+    const visibilityFilter = getVisibleNotificationsFilter(req.user, userId);
+    const result = await Notification.updateOne({
+      _id: req.params.id,
+      ...visibilityFilter,
+    },
       { $addToSet: { dismissedBy: userId } }
     );
+
+    if (!result.matchedCount) {
+      return res.status(404).json({ success: false, message: 'Notification not found' });
+    }
 
     return res.sendStatus(204);
   } catch (error) {
@@ -118,16 +91,11 @@ async function deleteNotification(req, res) {
 
 async function deleteAllNotifications(req, res) {
   try {
-    const userId = req.user.id || req.user._id;
+    const userId = getUserId(req);
+    const visibilityFilter = getVisibleNotificationsFilter(req.user, userId);
     const result = await Notification.updateMany(
       {
-        $or: [
-          { recipient: userId },
-          {
-            recipient: null,
-            target: { $in: [req.user.role, 'all'] },
-          },
-        ],
+        ...visibilityFilter,
         dismissedBy: { $ne: userId },
       },
       { $addToSet: { dismissedBy: userId } }
