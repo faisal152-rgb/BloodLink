@@ -1,5 +1,6 @@
 const Notification = require('../models/Notification');
 const Redis = require('../config/redis');
+const mongoose = require('mongoose');
 
 // Get all notifications
 async function getnotifications(req, res) {
@@ -76,4 +77,26 @@ async function addnotification(req, res) {
   }
 };
 
-module.exports = { getnotifications, addnotification };
+async function dismissWelcomeNotification(req, res) {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(400).json({ success: false, message: 'Invalid notification ID' });
+  }
+
+  try {
+    const notification = await Notification.findOneAndDelete({
+      _id: req.params.id,
+      recipient: req.user.id || req.user._id,
+      type: 'welcome',
+    });
+
+    if (!notification) {
+      return res.status(404).json({ success: false, message: 'Welcome notification not found' });
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+module.exports = { getnotifications, addnotification, dismissWelcomeNotification };
