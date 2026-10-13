@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const passport = require('passport');
 const User = require('../models/User');
 const otpModel = require('../models/Otp');
@@ -377,6 +378,13 @@ async function refreshtoken(req, res) {
   } catch (err) {
     return res.status(401).json({
       message: "Refresh token invalid or expired",
+      status: "Failed"
+    });
+  }
+
+  if (typeof (decoded.id || decoded._id) !== 'string' || !mongoose.isValidObjectId(decoded.id || decoded._id)) {
+    return res.status(401).json({
+      message: "Refresh token has an invalid user ID",
       status: "Failed"
     });
   }
