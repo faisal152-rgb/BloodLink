@@ -10,11 +10,34 @@ const { generateOtp, getOtpHtml } = require('../utils/generateOtp');
 const redis = require('../config/redis');
 const crypto = require('crypto');
 const { Queue } = require('bullmq');
+const { sendEmail } = require('../services/EmailOtp');
 const { sendWelcomeMessages } = require('../utils/welcome');
 const emailQueue = new Queue('emailQueue', {
   connection: redis,
 });
 
+async function sendVerificationOtp(user) {
+  const otp = generateOtp();
+  const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+
+  await otpModel.findOneAndUpdate(
+    { email: user.email },
+    {
+      email: user.email,
+      user: user._id,
+      otpHash,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+    },
+    { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
+  );
+
+  await sendEmail(
+    user.email,
+    'Verify your BloodLink email',
+    `Your BloodLink verification code is ${otp}. It expires in 10 minutes.`,
+    getOtpHtml(otp)
+  );
+}
 
 const CLIENT_URL = process.env.CLIENT_URL
 
@@ -72,30 +95,11 @@ async function Register(req, res) {
   let user;
   try {
     user = await User.create({ name, email, password, role, provider: 'local' });
-    const otp = generateOtp();
-    await redis.del(`otp:${email}`);
-    const html = getOtpHtml(otp);
-    const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
-    await otpModel.deleteOne({ email });
-    await otpModel.create({
-      email: user.email,
-      user: user._id,
-      otpHash,
-      expiresAt: Date.now() + 10 * 60 * 1000,
-    })
-    await redis.set(`otp:${email}`, otp, 'EX', 5 * 60);
-    console.log(otp)
-    await emailQueue.add("sendEmail", {
-      to: user.email,
-      subject: `OTP Verification ${otp}`,
-      text: `Your OTP is ${otp}`,
-      html: html
-    });
-  }
-  catch (err) {
-    console.log(err);
-    return res.status(403).json({
-      Message: "OTP Not Sent",
+    await sendVerificationOtp(user);
+  } catch (err) {
+    console.error('Registration OTP email delivery failed:', err);
+    return res.status(503).json({
+      message: "We couldn't send the verification email. Please sign in to request another OTP.",
       Status: "Fail",
     });
   }
@@ -157,27 +161,13 @@ async function Login(req, res) {
     // Check if user email is verified
     if (!user.Verified) {
       try {
-        const otp = generateOtp();
-        await redis.del(`otp:${email}`);
-        const html = getOtpHtml(otp);
-        const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
-        await otpModel.deleteOne({ email });
-        await otpModel.create({
-          email: user.email,
-          user: user._id,
-          otpHash,
-          expiresAt: Date.now() + 10 * 60 * 1000,
-        });
-        await redis.set(`otp:${email}`, otp, 'EX', 10 * 60);
-        console.log("OTP for unverified user:", otp);
-        await emailQueue.add("sendEmail", {
-          to: user.email,
-          subject: `OTP Verification ${otp}`,
-          text: `Your OTP is ${otp}`,
-          html: html
-        });
+        await sendVerificationOtp(user);
       } catch (err) {
-        console.log("OTP Send Error:", err);
+        console.error('Login OTP email delivery failed:', err);
+        return res.status(503).json({
+          message: "We couldn't send the verification email. Please try again shortly.",
+          Status: "Fail",
+        });
       }
 
       return res.status(403).json({
@@ -308,6 +298,10 @@ async function Profile(req, res) {
 async function updateProfile(req, res) {
   const { id, name, email, password, hospitalName, phone } = req.body;
   try {
+    if (typeof id !== 'string' || !mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: 'A valid user ID is required' });
+    }
+
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -446,6 +440,7 @@ async function verifyOtp(req, res) {
     // ✅ Redis mein OTP exist kare toh verify karo, NOT reject
     const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
     const otpData = await otpModel.findOne({
+      email: String(Email).trim().toLowerCase(),
       otpHash,
       expiresAt: { $gt: Date.now() }
     });
@@ -461,7 +456,6 @@ async function verifyOtp(req, res) {
       { new: true }
     );
     await otpModel.deleteMany({ user: otpData.user });
-    await redis.del(`otp:${Email}`);
     return res.status(200).json({
       message: "OTP verified successfully",
       user: {
