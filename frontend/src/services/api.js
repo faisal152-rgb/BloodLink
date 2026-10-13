@@ -120,7 +120,7 @@ export const addLocation = (locationData) => api.post('/locations', locationData
 export const deleteLocation = (id) => api.delete(`/locations/${id}`);
 
 // Notifications
-export const getNotifications = () => api.get('/notifications');
+export const getNotifications = (target) => api.get('/notifications', { params: target ? { target } : {} });
 export const sendNotification = (notificationData) => api.post('/notifications', notificationData);
 
 // Admins
