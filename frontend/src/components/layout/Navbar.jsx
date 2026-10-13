@@ -13,7 +13,9 @@ const Navbar = ({ activeSection, setActiveSection, isLoggedIn, isAdmin, onLogout
   const [showMenu, setShowMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const role = userData?.role || 'donor';
+  const role = typeof userData?.role === 'string'
+    ? userData.role.trim().toLowerCase()
+    : 'donor';
   const roleConf = ROLE_CONFIG[role] || ROLE_CONFIG.donor;
   const RoleIcon = roleConf.icon;
   const userName = userData?.name || 'User';
