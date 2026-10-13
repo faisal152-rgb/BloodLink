@@ -94,28 +94,44 @@
   cursor: pointer;
 }
 
-.donor-notifications-header .donor-notifications-delete-all {
+.donor-notifications-panel button.donor-notifications-delete-all,
+.donor-notifications-panel button.donor-notifications-delete {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
   place-items: center;
   padding: 0;
   color: #b42332;
+  font-size: 0;
+  line-height: 0;
   background: transparent;
   border: 0;
-  border-radius: 50%;
+  border-radius: 0;
+  box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
   cursor: pointer;
 }
 
-.donor-notifications-header .donor-notifications-delete-all:hover:not(:disabled) {
+.donor-notifications-panel button.donor-notifications-delete-all:hover:not(:disabled),
+.donor-notifications-panel button.donor-notifications-delete:hover:not(:disabled) {
   color: #8f1724;
-  background: rgba(220, 53, 69, 0.08);
+  background: transparent;
 }
 
-.donor-notifications-header .donor-notifications-delete-all:disabled {
+.donor-notifications-panel button.donor-notifications-delete-all:disabled,
+.donor-notifications-panel button.donor-notifications-delete:disabled {
   cursor: not-allowed;
   color: var(--secondary-text);
   opacity: 0.65;
+}
+
+.donor-notifications-panel button.donor-notifications-delete-all:focus-visible,
+.donor-notifications-panel button.donor-notifications-delete:focus-visible {
+  outline: 2px solid var(--primary-red);
+  outline-offset: 2px;
 }
 
 .donor-notifications-delete-all svg,
@@ -163,35 +179,9 @@
   font-size: 0.92rem;
 }
 
-.donor-notifications-delete {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  flex: 0 0 auto;
-  place-items: center;
+.donor-notifications-panel button.donor-notifications-delete {
+  flex: 0 0 32px;
   margin: -0.35rem -0.4rem 0 0;
-  padding: 0;
-  color: #b42332;
-  background: transparent;
-  border: 0;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: color 160ms ease, background 160ms ease;
-}
-
-.donor-notifications-delete:hover:not(:disabled) {
-  color: #8f1724;
-  background: rgba(220, 53, 69, 0.14);
-}
-
-.donor-notifications-delete:focus-visible {
-  outline: 2px solid var(--primary-red);
-  outline-offset: 2px;
-}
-
-.donor-notifications-delete:disabled {
-  cursor: wait;
-  opacity: 0.55;
 }
 
 .donor-notifications-error {
