@@ -22,18 +22,52 @@ Your account has been successfully created! You’re now part of a community ded
 
 Thank you for joining BloodLink. Every connection counts!
 
-— Team BloodLink 🩸`;
-  const html = `<!doctype html>
+const html = `<!doctype html>
 <html lang="en">
   <body style="margin:0;background:#f7f7f7;font-family:Arial,sans-serif;color:#292929">
     <div style="max-width:600px;margin:32px auto;padding:32px;background:#fff;border-radius:12px;line-height:1.6">
+
       <h1 style="color:#c62828">🩸 Welcome to BloodLink!</h1>
+
       <p>Hello ${safeName}! 👋</p>
+
       <p>Welcome to BloodLink — Connecting Lives, Saving Lives. ❤️</p>
-      <p>Your account has been successfully created! You’re now part of a community dedicated to helping people in need of blood.</p>
-      <p>🤝 Together, we can make a difference and save lives.</p>
-      <p>Thank you for joining BloodLink. Every connection counts!</p>
-      <p>— Team BloodLink 🩸</p>
+
+      <p>
+        Your account has been successfully created! You’re now part of a
+        community dedicated to helping people in need of blood.
+      </p>
+
+      <p style="text-align:center;margin:28px 0;">
+        <a
+          href="https://bloodlink-donation.vercel.app"
+          target="_blank"
+          style="
+            display:inline-block;
+            background:#c62828;
+            color:#ffffff;
+            text-decoration:none;
+            padding:12px 24px;
+            border-radius:6px;
+            font-weight:bold;
+          "
+        >
+          Visit BloodLink ❤️
+        </a>
+      </p>
+
+      <p>
+        🤝 Together, we can make a difference and save lives.
+      </p>
+
+      <p>
+        Thank you for joining BloodLink. Every connection counts!
+      </p>
+
+      <p>
+        — Team BloodLink 🩸
+      </p>
+
     </div>
   </body>
 </html>`;
