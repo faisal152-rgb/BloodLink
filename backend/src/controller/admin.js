@@ -4,13 +4,27 @@ const Redis = require('../config/redis');
 // Get all users (admin/hospital/bloodbank/donor) - for admin management
 async function Getallusers(req, res) {
   try {
-    const users = await Redis.get("admin_users");
-    if (users) {
-      return res.json(JSON.parse(users));
+    const cachedUsers = await Redis.get("admin_users");
+    if (cachedUsers) {
+      const users = JSON.parse(cachedUsers);
+      return res.json(users.map(user => ({
+        id: user.id || user._id?.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status || 'active',
+      })));
     }
     const admins = await User.find({ role: { $in: ['admin', 'hospital', 'bloodbank', 'donor'] } });
-    await Redis.set("admin_users", JSON.stringify(admins));
-    res.json(admins.map(a => ({ id: a._id.toString(), name: a.name, email: a.email, role: a.role, status: 'active' })));
+    const users = admins.map(user => ({
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      status: 'active',
+    }));
+    await Redis.set("admin_users", JSON.stringify(users));
+    res.json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
