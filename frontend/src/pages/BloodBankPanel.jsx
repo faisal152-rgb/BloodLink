@@ -7,7 +7,6 @@ import {
   Activity,
   History,
   Settings,
-  Bell,
   Search,
   CheckCircle2,
   XCircle,
@@ -23,6 +22,7 @@ import {
 } from 'lucide-react';
 import '../styles/bloodbankpanel.css';
 import * as api from '../services/api';
+import NotificationBell from '../components/layout/NotificationBell';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 
@@ -295,7 +295,7 @@ const BloodBankPanel = ({ userData, onLogout, onRefreshDonors, onRefreshUserData
           </nav>
 
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            {/* Logout button removed */}
+            <NotificationBell target="bloodbank" />
           </div>
         </div>
       </header>
