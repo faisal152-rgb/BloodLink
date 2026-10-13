@@ -11,6 +11,7 @@ const cookieParser = require('cookie-parser');
 const passport = require('./services/passport');
 const connectDB = require('./config/db');
 const startKeepAlive = require('./utils/keepAlive');
+require('./utils/emailworker');
 // Models
 const User = require('./models/User');
 const Donor = require('./models/Donor');
