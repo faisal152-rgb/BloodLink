@@ -103,7 +103,17 @@ const sendEmail = async (to, subject, text, html) => {
     throw new Error(`Gmail API send failed (${response.status}): ${details}`);
   }
 
-  return response.json();
+  const result = await response.json();
+  const [localPart, domain] = to.split('@');
+  const maskedRecipient = domain
+    ? `${localPart.slice(0, 1)}***@${domain}`
+    : '[invalid email]';
+  console.info('Gmail API accepted email', {
+    recipient: maskedRecipient,
+    messageId: result.id,
+  });
+
+  return result;
 };
 
 module.exports = { sendEmail };
