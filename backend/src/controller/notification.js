@@ -7,23 +7,24 @@ async function getnotifications(req, res) {
   const { title, target } = req.query;
   try {
     const isAdminListingAll = req.user.role === 'admin' && !target;
-    const publicNotifications = target && target !== 'all'
-      ? { target: { $in: [target, 'all'] } }
-      : { target: 'all' };
-    const filter = {
-      $and: [
-        isAdminListingAll
-          ? {}
-          : { $or: [publicNotifications, { recipient: req.user.id || req.user._id }] },
-        {
-          $or: [
-            { expiresAt: { $exists: false } },
-            { expiresAt: null },
-            { expiresAt: { $gt: new Date() } },
-          ],
-        },
+    const userId = req.user.id || req.user._id;
+    const notificationTarget = req.user.role === 'admin' && target
+      ? target
+      : req.user.role;
+    const visibleNotifications = {
+      $or: [
+        { target: { $in: [notificationTarget, 'all'] } },
+        { recipient: userId },
       ],
     };
+    const filter = isAdminListingAll
+      ? {}
+      : {
+        $and: [
+          visibleNotifications,
+          { dismissedBy: { $ne: userId } },
+        ],
+      };
 
     if (title && Redis && isAdminListingAll) {
       try {
@@ -88,39 +89,29 @@ async function addnotification(req, res) {
   }
 };
 
-async function markWelcomeNotificationViewed(req, res) {
+async function deleteNotification(req, res) {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return res.status(400).json({ success: false, message: 'Invalid notification ID' });
   }
 
   try {
-    const expiresAt = new Date(Date.now() + 30_000);
+    const userId = req.user.id || req.user._id;
     const result = await Notification.updateOne(
       {
         _id: req.params.id,
-        recipient: req.user.id || req.user._id,
-        type: 'welcome',
         $or: [
-          { expiresAt: { $exists: false } },
-          { expiresAt: null },
+          { recipient: userId },
+          {
+            recipient: null,
+            target: { $in: [req.user.role, 'all'] },
+          },
         ],
       },
-      { $set: { expiresAt } }
+      { $addToSet: { dismissedBy: userId } }
     );
 
-    if (result.modifiedCount === 1) {
-      const timer = setTimeout(async () => {
-        try {
-          await Notification.deleteOne({
-            _id: req.params.id,
-            type: 'welcome',
-            expiresAt: { $lte: new Date() },
-          });
-        } catch (error) {
-          console.error('Failed to delete expired welcome notification:', error);
-        }
-      }, Math.max(0, expiresAt.getTime() - Date.now()));
-      timer.unref();
+    if (!result.matchedCount) {
+      return res.status(404).json({ success: false, message: 'Notification not found' });
     }
 
     return res.sendStatus(204);
@@ -129,8 +120,35 @@ async function markWelcomeNotificationViewed(req, res) {
   }
 }
 
+async function deleteAllNotifications(req, res) {
+  try {
+    const userId = req.user.id || req.user._id;
+    const result = await Notification.updateMany(
+      {
+        $or: [
+          { recipient: userId },
+          {
+            recipient: null,
+            target: { $in: [req.user.role, 'all'] },
+          },
+        ],
+        dismissedBy: { $ne: userId },
+      },
+      { $addToSet: { dismissedBy: userId } }
+    );
+
+    return res.status(200).json({
+      success: true,
+      deletedCount: result.modifiedCount,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 module.exports = {
   getnotifications,
   addnotification,
-  markWelcomeNotificationViewed,
+  deleteNotification,
+  deleteAllNotifications,
 };
