@@ -102,19 +102,17 @@ const NotificationBell = ({ target }) => {
             <div className="donor-notifications-header">
               <h2>Notifications</h2>
               <div className="donor-notifications-header-actions">
-                {notifications.length > 0 && (
-                  <button
-                    type="button"
-                    className="donor-notifications-delete-all"
-                    onClick={handleDeleteAll}
-                    disabled={deletingAll || deletingIds.length > 0}
-                    aria-label="Delete all notifications"
-                    title="Delete all notifications"
-                  >
-                    <Trash2 size={16} />
-                    <span>{deletingAll ? 'Deleting...' : 'Delete all'}</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="donor-notifications-delete-all"
+                  onClick={handleDeleteAll}
+                  disabled={notifications.length === 0 || deletingAll || deletingIds.length > 0}
+                  aria-label="Delete all notifications"
+                  title="Delete all notifications"
+                >
+                  <Trash2 size={16} />
+                  <span>{deletingAll ? 'Deleting...' : 'Delete all'}</span>
+                </button>
                 <button type="button" onClick={() => setIsOpen(false)} aria-label="Close notifications">
                   <X size={18} />
                 </button>
@@ -151,6 +149,7 @@ const NotificationBell = ({ target }) => {
                         title="Delete notification"
                       >
                         <Trash2 size={16} />
+                        <span>Delete</span>
                       </button>
                     </div>
                     <p>{notification.message}</p>
