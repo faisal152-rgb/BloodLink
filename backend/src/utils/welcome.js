@@ -11,9 +11,7 @@ async function sendWelcomeMessages(user, emailQueue) {
   if (user.welcomeSentAt) return;
 
   const safeName = escapeHtml(user.name);
-  const text = `🩸 Welcome to BloodLink!
-
-Hello ${user.name}! 👋
+  const text = `Hello ${user.name}! 👋
 
 Welcome to BloodLink — Connecting Lives, Saving Lives. ❤️
 
