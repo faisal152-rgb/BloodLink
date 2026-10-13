@@ -30,18 +30,14 @@ const notificationSchema = new mongoose.Schema({
   timestamp: {
      type: Date, 
      default: Date.now 
-    },
-    expiresAt: {
-      type: Date,
-    }
+  },
+  dismissedBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  }],
 }, { 
-    timestamps: true
+  timestamps: true
 });
-
-notificationSchema.index(
-    { expiresAt: 1 },
-    { expireAfterSeconds: 0 }
-);
 
 notificationSchema.index(
   { recipient: 1, type: 1 },
