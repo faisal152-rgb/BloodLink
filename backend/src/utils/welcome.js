@@ -1,4 +1,5 @@
 const Notification = require('../models/Notification');
+const { sendEmail } = require('../services/EmailOtp');
 
 const escapeHtml = (value) => value
   .replace(/&/g, '&amp;')
@@ -7,8 +8,8 @@ const escapeHtml = (value) => value
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&#39;');
 
-async function sendWelcomeMessages(user, emailQueue) {
-  if (user.welcomeSentAt) return;
+async function sendWelcomeMessages(user) {
+  if (user.welcomeEmailSentAt) return;
 
   const safeName = escapeHtml(user.name);
   const text = `Hello ${user.name}! 👋
@@ -47,33 +48,20 @@ Thank you for joining BloodLink. Every connection counts!
     timestamp: new Date(),
   };
 
+  await sendEmail(user.email, 'Welcome to BloodLink!', text, html);
+
+  user.welcomeEmailSentAt = new Date();
+  await user.save();
+
   try {
     await Notification.findOneAndUpdate(
       { recipient: user._id, type: 'welcome' },
       { $setOnInsert: notification },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, setDefaultsOnInsert: true }
     );
   } catch (error) {
     if (error.code !== 11000) throw error;
   }
-
-  await emailQueue.add(
-    'sendEmail',
-    {
-      to: user.email,
-      subject: 'Welcome to BloodLink!',
-      text,
-      html,
-    },
-    {
-      jobId: `welcome-${user._id}`,
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 1000 },
-    }
-  );
-
-  user.welcomeSentAt = new Date();
-  await user.save();
 }
 
 module.exports = { sendWelcomeMessages };
