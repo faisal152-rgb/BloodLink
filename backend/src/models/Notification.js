@@ -1,6 +1,14 @@
 const mongoose = require('mongoose');
 
 const notificationSchema = new mongoose.Schema({
+  recipient: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  type: {
+    type: String,
+    default: 'general',
+  },
   title: {
      type: String, 
      default: 'New Notification' 
@@ -26,5 +34,16 @@ const notificationSchema = new mongoose.Schema({
 }, { 
   timestamps: true
 });
+
+notificationSchema.index(
+  { recipient: 1, type: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      recipient: { $type: 'objectId' },
+      type: 'welcome',
+    },
+  }
+);
 
 module.exports = mongoose.model('Notification', notificationSchema);
