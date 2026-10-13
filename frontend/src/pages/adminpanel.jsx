@@ -200,7 +200,8 @@ const DonorManagement = () => {
     try {
       setLoading(true);
       const res = await api.getDonors();
-      setDonors(res.data);
+      const donorsData = Array.isArray(res.data) ? res.data : (res.data?.donors || res.data?.data || []);
+      setDonors(donorsData);
     } catch (error) {
       console.error("Error fetching donors:", error);
     } finally {
@@ -208,7 +209,7 @@ const DonorManagement = () => {
     }
   };
 
-  const filteredDonors = donors.filter(d => {
+  const filteredDonors = (Array.isArray(donors) ? donors : []).filter(d => {
     const matchSearch = d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       d.bloodGroup.toLowerCase().includes(searchTerm.toLowerCase());
     const matchBlood = filterBlood === 'all' || d.bloodGroup === filterBlood;
@@ -532,7 +533,8 @@ const BloodRequestsManagement = () => {
     try {
       setLoading(true);
       const res = await api.getBloodRequests();
-      setRequests(res.data);
+      const reqData = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      setRequests(reqData);
     } catch (error) {
       console.error("Error fetching requests:", error);
     } finally {
@@ -540,7 +542,7 @@ const BloodRequestsManagement = () => {
     }
   };
 
-  const filteredRequests = requests.filter(r => {
+  const filteredRequests = (Array.isArray(requests) ? requests : []).filter(r => {
     const matchUrgency = filterUrgency === 'all' || r.urgency === filterUrgency;
     const matchStatus = filterStatus === 'all' || r.status === filterStatus;
     return matchUrgency && matchStatus;
@@ -775,7 +777,8 @@ const LocationManagement = () => {
     try {
       setLoading(true);
       const res = await api.getLocations();
-      setLocations(res.data);
+      const locData = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      setLocations(locData);
     } catch (error) {
       console.error("Error fetching locations:", error);
     } finally {
@@ -836,7 +839,7 @@ const LocationManagement = () => {
 
       {/* Locations Grid */}
       <div className="locations-grid">
-        {locations.map((loc, idx) => (
+        {(Array.isArray(locations) ? locations : []).map((loc, idx) => (
           <motion.div
             key={loc._id || loc.id}
             initial={{ y: 20, opacity: 0 }}
@@ -877,6 +880,8 @@ const NotificationsSystem = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notificationText, setNotificationText] = useState('');
+  const [notificationTitle, setNotificationTitle] = useState('');
+  const [notificationTarget, setNotificationTarget] = useState('all');
 
   useEffect(() => {
     fetchNotifications();
@@ -886,7 +891,8 @@ const NotificationsSystem = () => {
     try {
       setLoading(true);
       const res = await api.getNotifications();
-      setNotifications(res.data);
+      const data = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      setNotifications(data);
     } catch (error) {
       console.error("Error fetching notifications:", error);
     } finally {
@@ -897,13 +903,36 @@ const NotificationsSystem = () => {
   const handleSendNotification = async () => {
     if (notificationText.trim()) {
       try {
-        const res = await api.sendNotification({ message: notificationText });
-        setNotifications([res.data, ...notifications]);
+        const res = await api.sendNotification({
+          title: notificationTitle.trim() || undefined,
+          message: notificationText,
+          target: notificationTarget
+        });
+        const newNotif = res.data;
+        setNotifications([newNotif, ...notifications]);
         setNotificationText('');
+        setNotificationTitle('');
+        setNotificationTarget('all');
       } catch (error) {
         console.error("Error sending notification:", error);
       }
     }
+  };
+
+  const getTargetLabel = (target) => {
+    switch (target) {
+      case 'hospital': return 'Hospitals';
+      case 'donor': return 'Donors';
+      case 'bloodbank': return 'Blood Banks';
+      default: return 'Everyone';
+    }
+  };
+
+  const formatTime = (ts) => {
+    if (!ts) return '';
+    try {
+      return new Date(ts).toLocaleString();
+    } catch { return String(ts); }
   };
 
   return (
@@ -914,13 +943,30 @@ const NotificationsSystem = () => {
 
       {/* Send Notification */}
       <div className="notification-form">
+        <input
+          type="text"
+          placeholder="Notification title (optional)"
+          value={notificationTitle}
+          onChange={(e) => setNotificationTitle(e.target.value)}
+          style={{ width: '100%', padding: '0.8rem 1rem', marginBottom: '0.8rem', border: '1px solid var(--border-color)', borderRadius: '0.5rem', fontSize: '0.95rem', fontFamily: 'inherit' }}
+        />
         <textarea
           placeholder="Write notification message..."
           value={notificationText}
           onChange={(e) => setNotificationText(e.target.value)}
           rows="3"
         />
-        <div className="form-actions">
+        <div className="form-actions" style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <select
+            value={notificationTarget}
+            onChange={(e) => setNotificationTarget(e.target.value)}
+            style={{ padding: '0.6rem 1rem', borderRadius: '0.5rem', border: '1px solid var(--border-color)', fontSize: '0.9rem', fontFamily: 'inherit' }}
+          >
+            <option value="all">🌍 Send to Everyone</option>
+            <option value="hospital">🏥 Send to Hospitals</option>
+            <option value="donor">🩸 Send to Donors</option>
+            <option value="bloodbank">🏦 Send to Blood Banks</option>
+          </select>
           <button className="btn btn-primary" onClick={handleSendNotification} type="button">
             <Bell size={18} /> Send Notification
           </button>
@@ -929,23 +975,42 @@ const NotificationsSystem = () => {
 
       {/* Notifications List */}
       <div className="notifications-list">
-        {notifications.map((notif, idx) => (
+        {loading ? (
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>Loading notifications...</p>
+        ) : notifications.length === 0 ? (
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>No notifications yet</p>
+        ) : notifications.map((notif, idx) => (
           <motion.div
-            key={notif.id}
+            key={notif._id || notif.id || idx}
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: idx * 0.1 }}
-            className={`notification-item ${notif.status}`}
+            transition={{ delay: idx * 0.05 }}
+            className={`notification-item ${notif.status || 'sent'}`}
           >
             <div className="notification-icon">
               <Bell size={20} />
             </div>
             <div className="notification-content">
-              <h4>{notif.title}</h4>
+              <h4>{notif.title || 'Notification'}</h4>
               <p>{notif.message}</p>
-              <small>{notif.timestamp}</small>
+              <small>
+                {formatTime(notif.timestamp || notif.createdAt)}
+                {notif.target && (
+                  <span style={{
+                    marginLeft: '0.8rem',
+                    padding: '0.15rem 0.5rem',
+                    borderRadius: '0.3rem',
+                    background: notif.target === 'all' ? '#0d6efd20' : notif.target === 'hospital' ? '#19875420' : notif.target === 'donor' ? '#6f42c120' : '#dc354520',
+                    color: notif.target === 'all' ? '#0d6efd' : notif.target === 'hospital' ? '#198754' : notif.target === 'donor' ? '#6f42c1' : '#dc3545',
+                    fontSize: '0.75rem',
+                    fontWeight: 600
+                  }}>
+                    → {getTargetLabel(notif.target)}
+                  </span>
+                )}
+              </small>
             </div>
-            <span className="status-badge">{notif.status.toUpperCase()}</span>
+            <span className="status-badge">{(notif.status || 'sent').toUpperCase()}</span>
           </motion.div>
         ))}
       </div>
@@ -975,7 +1040,8 @@ const AdminManagement = ({ onRefreshUserData }) => {
     try {
       setLoading(true);
       const res = await api.getAdmins();
-      setAdmins(res.data);
+      const adminData = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      setAdmins(adminData);
     } catch (error) {
       console.error("Error fetching admins:", error);
       setError("Failed to fetch admins");
@@ -1272,7 +1338,7 @@ const AdminManagement = ({ onRefreshUserData }) => {
             </tr>
           </thead>
           <tbody>
-            {admins.map((admin, idx) => (
+            {(Array.isArray(admins) ? admins : []).map((admin, idx) => (
               <motion.tr
                 key={admin.id}
                 initial={{ x: -20, opacity: 0 }}
