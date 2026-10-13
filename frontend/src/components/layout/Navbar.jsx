@@ -1,8 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Droplet, User, ShieldCheck, Building2, LayoutDashboard, LogOut, Menu, X, Bell } from 'lucide-react';
+import React, { useState } from 'react';
+import { Droplet, User, ShieldCheck, Building2, LayoutDashboard, LogOut, Menu, X } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
-import * as api from '../../services/api';
-import '../../styles/donor-notifications.css';
+import NotificationBell from './NotificationBell';
 
 const ROLE_CONFIG = {
   admin: { label: 'Admin', icon: ShieldCheck, color: '#dc3545' },
@@ -14,11 +13,6 @@ const ROLE_CONFIG = {
 const Navbar = ({ activeSection, setActiveSection, isLoggedIn, onLogout, userData, onNavItemClick }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
-  const [notificationsError, setNotificationsError] = useState('');
-  const welcomeDismissalsInFlight = useRef(new Set());
 
   const role = typeof userData?.role === 'string'
     ? userData.role.trim().toLowerCase()
@@ -29,53 +23,6 @@ const Navbar = ({ activeSection, setActiveSection, isLoggedIn, onLogout, userDat
   const userEmail = userData?.email || '';
   // initials from name
   const initials = userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-
-  const fetchNotifications = async () => {
-    setNotificationsLoading(true);
-    setNotificationsError('');
-    try {
-      const response = await api.getNotifications('donor');
-      if (!Array.isArray(response.data)) {
-        throw new Error('Unexpected notifications response.');
-      }
-      setNotifications(response.data);
-    } catch (error) {
-      setNotificationsError(error.response?.data?.message || error.message || 'Could not load notifications.');
-      console.error('Error fetching donor notifications:', error);
-    } finally {
-      setNotificationsLoading(false);
-    }
-  };
-
-  const handleNotificationsClick = () => {
-    const willOpen = !showNotifications;
-    setShowNotifications(willOpen);
-    if (willOpen) fetchNotifications();
-  };
-
-  useEffect(() => {
-    if (!showNotifications || notificationsLoading) return;
-
-    const welcomeIds = notifications
-      .filter((notification) => notification.type === 'welcome')
-      .map((notification) => notification._id || notification.id)
-      .filter((id) => id && !welcomeDismissalsInFlight.current.has(id));
-
-    welcomeIds.forEach((id) => welcomeDismissalsInFlight.current.add(id));
-
-    welcomeIds.forEach(async (id) => {
-      try {
-        await api.dismissWelcomeNotification(id);
-        setNotifications((current) =>
-          current.filter((notification) => (notification._id || notification.id) !== id)
-        );
-      } catch (error) {
-        console.error('Error dismissing viewed welcome notification:', error);
-      } finally {
-        welcomeDismissalsInFlight.current.delete(id);
-      }
-    });
-  }, [showNotifications, notificationsLoading, notifications]);
 
   const handleLogoClick = () => {
     onNavItemClick('home');
@@ -135,72 +82,7 @@ const Navbar = ({ activeSection, setActiveSection, isLoggedIn, onLogout, userDat
           {isLoggedIn ? (
             <>
               {role === 'donor' && (
-                <div className="donor-notifications-wrap">
-                  <button
-                    type="button"
-                    className="donor-notifications-button"
-                    onClick={handleNotificationsClick}
-                    aria-label={`Notifications${notifications.length ? `, ${notifications.length} messages` : ''}`}
-                    aria-expanded={showNotifications}
-                    aria-controls="donor-notifications-panel"
-                  >
-                    <Bell size={21} />
-                    {notifications.length > 0 && (
-                      <span className="donor-notifications-badge">
-                        {notifications.length > 99 ? '99+' : notifications.length}
-                      </span>
-                    )}
-                  </button>
-
-                  <AnimatePresence>
-                    {showNotifications && (
-                      <Motion.section
-                        id="donor-notifications-panel"
-                        className="donor-notifications-panel"
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 8 }}
-                        aria-label="Notifications"
-                      >
-                        <div className="donor-notifications-header">
-                          <h2>Notifications</h2>
-                          <button
-                            type="button"
-                            onClick={() => setShowNotifications(false)}
-                            aria-label="Close notifications"
-                          >
-                            <X size={18} />
-                          </button>
-                        </div>
-
-                        {notificationsLoading ? (
-                          <p className="donor-notifications-state" role="status">Loading notifications...</p>
-                        ) : notificationsError ? (
-                          <div className="donor-notifications-state" role="alert">
-                            <p>{notificationsError}</p>
-                            <button type="button" onClick={fetchNotifications}>Try again</button>
-                          </div>
-                        ) : notifications.length === 0 ? (
-                          <p className="donor-notifications-state">No notifications yet.</p>
-                        ) : (
-                          <ul className="donor-notifications-list">
-                            {notifications.map((notification, index) => (
-                              <li key={notification._id || notification.id || index}>
-                                <h3>{notification.title || 'BloodLink announcement'}</h3>
-                                <p>{notification.message}</p>
-                                {(notification.timestamp || notification.createdAt) && (
-                                  <time dateTime={notification.timestamp || notification.createdAt}>
-                                    {new Date(notification.timestamp || notification.createdAt).toLocaleString()}
-                                  </time>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </Motion.section>
-                    )}
-                  </AnimatePresence>
-                </div>
+                <NotificationBell target="donor" />
               )}
               <a 
                 href="/request" 
