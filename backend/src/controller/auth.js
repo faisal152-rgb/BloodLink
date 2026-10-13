@@ -7,14 +7,9 @@ const User = require('../models/User');
 const otpModel = require('../models/Otp');
 const sessionModel = require('../models/session');
 const { generateOtp, getOtpHtml } = require('../utils/generateOtp');
-const redis = require('../config/redis');
 const crypto = require('crypto');
-const { Queue } = require('bullmq');
 const { sendEmail } = require('../services/EmailOtp');
 const { sendWelcomeMessages } = require('../utils/welcome');
-const emailQueue = new Queue('emailQueue', {
-  connection: redis,
-});
 
 async function sendVerificationOtp(user) {
   const otp = generateOtp();
@@ -58,7 +53,7 @@ const resolveRoleFromEmail = (email) => {
 // ─── Helper: send token redirect to frontend ─────────────────────────────────
 const sendTokenRedirect = async (res, user) => {
   try {
-    await sendWelcomeMessages(user, emailQueue);
+    await sendWelcomeMessages(user);
   } catch (error) {
     console.error('Welcome notification/email delivery failed:', error);
   }
@@ -130,11 +125,6 @@ async function Register(req, res) {
       message: "We couldn't send the verification email. Please sign in to request another OTP.",
       Status: "Fail",
     });
-  }
-  try {
-    await sendWelcomeMessages(user, emailQueue);
-  } catch (error) {
-    console.error('Welcome notification/email delivery failed:', error);
   }
   return res.status(201).json({
     Message: "Registration Successfull",
@@ -208,7 +198,7 @@ async function Login(req, res) {
 
     // Verified User -> Generate Session & Tokens
     try {
-      await sendWelcomeMessages(user, emailQueue);
+      await sendWelcomeMessages(user);
     } catch (error) {
       console.error('Welcome notification/email delivery failed:', error);
     }
