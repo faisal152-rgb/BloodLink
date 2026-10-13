@@ -111,7 +111,6 @@ const NotificationBell = ({ target }) => {
                   title="Delete all notifications"
                 >
                   <Trash2 size={18} strokeWidth={2.5} aria-hidden="true" />
-                  <span>{deletingAll ? 'Deleting...' : 'Delete all'}</span>
                 </button>
                 <button type="button" onClick={() => setIsOpen(false)} aria-label="Close notifications">
                   <X size={18} />
@@ -149,7 +148,6 @@ const NotificationBell = ({ target }) => {
                         title="Delete notification"
                       >
                         <Trash2 size={18} strokeWidth={2.5} aria-hidden="true" />
-                        <span>Delete</span>
                       </button>
                     </div>
                     <p>{notification.message}</p>
