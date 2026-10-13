@@ -1125,6 +1125,11 @@ const AdminManagement = ({ onRefreshUserData }) => {
   };
 
   const handleDeleteAdmin = async (id) => {
+    if (!id || id === 'undefined') {
+      setError('Cannot delete this user because the record has no valid ID. Refresh the list and try again.');
+      return;
+    }
+
     try {
       await api.deleteAdmin(id);
       await fetchAdmins();
@@ -1375,7 +1380,7 @@ const AdminManagement = ({ onRefreshUserData }) => {
           <tbody>
             {(Array.isArray(admins) ? admins : []).map((admin, idx) => (
               <motion.tr
-                key={admin.id}
+                key={admin.id || admin._id}
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: idx * 0.05 }}
@@ -1395,10 +1400,10 @@ const AdminManagement = ({ onRefreshUserData }) => {
                 </td>
                 <td className="actions-cell">
                   <div className="action-buttons">
-                    <button type="button" className="btn-icon edit" onClick={() => handleEditAdmin(admin.id)} title="Edit">
+                    <button type="button" className="btn-icon edit" onClick={() => handleEditAdmin(admin.id || admin._id)} title="Edit">
                       <Edit2 size={16} />
                     </button>
-                    <button type="button" className="btn-icon delete" onClick={() => handleDeleteAdmin(admin.id)} title="Delete">
+                    <button type="button" className="btn-icon delete" onClick={() => handleDeleteAdmin(admin.id || admin._id)} title="Delete">
                       <Trash2 size={16} />
                     </button>
                   </div>
