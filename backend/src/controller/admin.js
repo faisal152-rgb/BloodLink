@@ -19,15 +19,19 @@ async function Getallusers(req, res) {
 // Add or promote admin/user
 async function Addadmin(req, res) {
   const { name, email, role, password } = req.body;
-  if (!name || !email || !role || !password) {
+  const normalizedName = typeof name === 'string' ? name.trim() : '';
+  const normalizedEmail = typeof email === 'string' ? email.trim() : '';
+  const normalizedRole = typeof role === 'string' ? role.trim() : '';
+  const normalizedPassword = typeof password === 'string' ? password : '';
+  if (!normalizedName || !normalizedEmail || !normalizedRole) {
     return res.status(400).json({ message: "all fields are required" });
   }
   try {
     await Redis.del("admin_users");
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ email: normalizedEmail });
     if (userExists) {
-      if (userExists.role !== (role || 'admin')) {
-        userExists.role = role || 'admin';
+      if (userExists.role !== normalizedRole) {
+        userExists.role = normalizedRole;
         await userExists.save();
         await Redis.set("admin_users", JSON.stringify(await User.find({ role: { $in: ['admin', 'hospital', 'bloodbank', 'donor'] } })));
         return res.status(200).json({ id: userExists._id.toString(), name: userExists.name, email: userExists.email, role: userExists.role, status: 'active', message: `Existing user assigned role: ${userExists.role}` });
@@ -35,7 +39,15 @@ async function Addadmin(req, res) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    const user = await User.create({ name, email, password: password, role: role || 'admin' });
+    if (!normalizedPassword) {
+      return res.status(400).json({ message: 'Password is required to create a new account' });
+    }
+    const user = await User.create({
+      name: normalizedName,
+      email: normalizedEmail,
+      password: normalizedPassword,
+      role: normalizedRole
+    });
     res.status(201).json({ id: user._id.toString(), name: user.name, email: user.email, role: user.role, status: 'active' });
   } catch (error) {
     res.status(500).json({ message: error.message });
