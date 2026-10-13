@@ -31,6 +31,10 @@ const HospitalPanel = ({ userData, onLogout, onRefreshUserData }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [requests, setRequests] = useState([]);
   const [notifications, setNotifications] = useState([]);
+
+  // Safe array helpers
+  const safeRequests = Array.isArray(requests) ? requests : [];
+  const safeNotifications = Array.isArray(notifications) ? notifications : [];
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,7 +49,7 @@ const HospitalPanel = ({ userData, onLogout, onRefreshUserData }) => {
       setLoading(true);
       const [reqRes, notifRes] = await Promise.all([
         api.getBloodRequests(),
-        api.getNotifications()
+        api.getNotifications('hospital')
       ]);
       // Filter requests for this specific hospital if needed
       const reqData = Array.isArray(reqRes.data) ? reqRes.data : (reqRes.data?.data || []);
@@ -208,7 +212,7 @@ const HospitalPanel = ({ userData, onLogout, onRefreshUserData }) => {
     }
   };
 
-  const unreadNotifications = Array.isArray(notifications) ? notifications.filter(n => !n.read).length : 0;
+  const unreadNotifications = safeNotifications.filter(n => !n.read).length;
 
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileStatus, setProfileStatus] = useState({ message: '', type: '' });
@@ -363,7 +367,7 @@ const HospitalPanel = ({ userData, onLogout, onRefreshUserData }) => {
                 </button>
               </div>
               <div className="notifications-list">
-                {notifications.map(notif => (
+                {safeNotifications.map(notif => (
                   <div
                     key={notif.id}
                     className={`notification-item ${!notif.read ? 'unread' : ''}`}
@@ -433,7 +437,7 @@ const HospitalPanel = ({ userData, onLogout, onRefreshUserData }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {requests.map(request => (
+                    {safeRequests.map(request => (
                       <tr key={request._id || request.id}>
                         <td>
                           <span className="patient-name">{request.patient || request.patientName}</span>
