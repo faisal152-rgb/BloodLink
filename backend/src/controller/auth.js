@@ -30,13 +30,14 @@ async function sendVerificationOtp(user) {
     },
     { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
   );
-
+console(otp);
   await sendEmail(
     user.email,
     'Verify your BloodLink email',
     `Your BloodLink verification code is ${otp}. It expires in 10 minutes.`,
     getOtpHtml(otp)
   );
+  console(sendEmail);
 }
 
 const CLIENT_URL = process.env.CLIENT_URL
