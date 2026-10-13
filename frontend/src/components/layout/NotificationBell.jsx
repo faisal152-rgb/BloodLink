@@ -108,7 +108,6 @@ const NotificationBell = ({ target }) => {
                   onClick={handleDeleteAll}
                   disabled={notifications.length === 0 || deletingAll || deletingIds.length > 0}
                   aria-label="Delete all notifications"
-                  title="Delete all notifications"
                 >
                   <Trash2 size={18} strokeWidth={2.5} aria-hidden="true" />
                 </button>
@@ -145,7 +144,6 @@ const NotificationBell = ({ target }) => {
                         onClick={() => handleDelete(notification._id || notification.id)}
                         disabled={deletingAll || deletingIds.includes(notification._id || notification.id)}
                         aria-label={`Delete ${notification.title || 'notification'}`}
-                        title="Delete notification"
                       >
                         <Trash2 size={18} strokeWidth={2.5} aria-hidden="true" />
                       </button>
