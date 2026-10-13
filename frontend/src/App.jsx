@@ -104,7 +104,16 @@ function App() {
             navigateTo(getUserRole(freshUser) === 'donor' ? 'profile' : 'controlpanel');
           }
         }
-      }).catch(() => {}); // silently fail if offline
+      }).catch((error) => {
+        if ([401, 404].includes(error.response?.status)) {
+          localStorage.removeItem('bloodlinkToken');
+          localStorage.removeItem('bloodlinkUser');
+          localStorage.removeItem('bloodlinkActiveSection');
+          setIsLoggedIn(false);
+          setUserData(null);
+          navigateTo('auth_login');
+        }
+      });
 
       // If user came to root or home while logged in, role-based default
       const currentSection = pathToSection(window.location.pathname);
