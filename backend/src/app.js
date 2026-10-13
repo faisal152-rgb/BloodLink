@@ -25,6 +25,8 @@ const locationRoutes = require('./routes/location');
 const notificationRoutes = require('./routes/notification');
 const adminRoutes = require('./routes/admin');
 const inventoryRoutes = require('./routes/inventory');
+const { userAuth } = require('./middelware/auth');
+const { get: getCurrentUser } = require('./controller/auth');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -100,6 +102,7 @@ app.get('/favicon.ico', (req, res) => res.status(204).send());
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/auth', authRoutes);
+app.get('/me', userAuth, getCurrentUser);
 
 app.use('/api/donors', donorRoutes);
 app.use('/donors', donorRoutes);
