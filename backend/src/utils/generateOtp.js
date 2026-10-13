@@ -49,7 +49,7 @@ function getOtpHtml(otp) {
     </div>
     <p style="font-size: 16px; color: #666;">This code will expire in <strong>10 minutes</strong>.</p>
     <p style="font-size: 16px; color: #666;">Do not share this code with anyone.</p>
-    <p style="margin-top: 30px; font-size: 14px; color: #999;">Thank you,<br>Your App Team</p>
+    <p style="margin-top: 30px; font-size: 14px; color: #999;">Thank you,<br>Your Bloodlink Team</p>
     </div>
     </body>
     </html>`
