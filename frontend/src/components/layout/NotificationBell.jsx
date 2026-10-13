@@ -9,7 +9,7 @@ const NotificationBell = ({ target }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const welcomeDismissalTimers = useRef(new Map());
+  const welcomeViewedIds = useRef(new Set());
   const panelId = `${target}-notifications-panel`;
 
   const fetchNotifications = async () => {
@@ -41,29 +41,19 @@ const NotificationBell = ({ target }) => {
     const welcomeIds = notifications
       .filter((notification) => notification.type === 'welcome')
       .map((notification) => notification._id || notification.id)
-      .filter((id) => id && !welcomeDismissalTimers.current.has(id));
+      .filter((id) => id && !welcomeViewedIds.current.has(id));
 
-    welcomeIds.forEach((id) => {
-      const timer = setTimeout(async () => {
-        welcomeDismissalTimers.current.delete(id);
-        try {
-          await api.dismissWelcomeNotification(id);
-          setNotifications((current) =>
-            current.filter((notification) => (notification._id || notification.id) !== id)
-          );
-        } catch (dismissError) {
-          console.error('Error dismissing viewed welcome notification:', dismissError);
-        }
-      }, 30_000);
+    welcomeIds.forEach((id) => welcomeViewedIds.current.add(id));
 
-      welcomeDismissalTimers.current.set(id, timer);
+    welcomeIds.forEach(async (id) => {
+      try {
+        await api.markWelcomeNotificationViewed(id);
+      } catch (viewError) {
+        welcomeViewedIds.current.delete(id);
+        console.error('Error marking welcome notification as viewed:', viewError);
+      }
     });
   }, [isOpen, loading, error, notifications]);
-
-  useEffect(() => () => {
-    welcomeDismissalTimers.current.forEach((timer) => clearTimeout(timer));
-    welcomeDismissalTimers.current.clear();
-  }, []);
 
   return (
     <div className="donor-notifications-wrap">
