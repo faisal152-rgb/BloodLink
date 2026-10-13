@@ -22,9 +22,9 @@ const CLIENT_URL = process.env.CLIENT_URL
 const resolveRoleFromEmail = (email) => {
   if (!email) return 'donor';
   const lower = email.toLowerCase();
-  const adminEmails = ('[EMAIL_ADDRESS]').split(',').map(e => e.trim().toLowerCase());
-  const hospitalEmails = ('[EMAIL_ADDRESS]').split(',').map(e => e.trim().toLowerCase());
-  const bloodbankEmails = ('[EMAIL_ADDRESS]').split(',').map(e => e.trim().toLowerCase());
+  const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+  const hospitalEmails = (process.env.HOSPITAL_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+  const bloodbankEmails = (process.env.BLOODBANK_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 
   if (adminEmails.includes(lower)) return 'admin';
   if (hospitalEmails.includes(lower)) return 'hospital';
