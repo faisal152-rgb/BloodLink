@@ -32,7 +32,7 @@ const Profile = ({ userData, onLogout }) => {
   const role     = currentUserData?.role  || 'donor';
   const name     = currentUserData?.name  || 'User';
   const email    = currentUserData?.email || '';
-  const roleConf = ROLE_CONFIG[role] || ROLE_CONFIG.donor;
+  const roleConf = ROLE_CONFIG[role];
   const RoleIcon = roleConf.icon;
   const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
