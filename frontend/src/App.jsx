@@ -85,19 +85,6 @@ function App() {
       setIsLoggedIn(true);
       const parsedUser = JSON.parse(storedUser);
       setUserData(parsedUser);
-
-      // Immediately refresh user data from server to get correct role
-      api.getCurrentUser().then(res => {
-        const freshUser = res.data?.user || res.data;
-        if (freshUser) {
-          setUserData(freshUser);
-          localStorage.setItem('bloodlinkUser', JSON.stringify(freshUser));
-          // Re-navigate if role changed and user is on controlpanel
-          const section = pathToSection(window.location.pathname);
-          if (section === 'home' && !localStorage.getItem('bloodlinkActiveSection')) {
-            navigateTo(freshUser.role === 'donor' ? 'profile' : 'controlpanel');
-          }
-        }
       }).catch(() => {}); // silently fail if offline
       // If user came to root or home while logged in, role-based default
       const currentSection = pathToSection(window.location.pathname);
