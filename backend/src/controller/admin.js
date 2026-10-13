@@ -1,30 +1,20 @@
 const User = require('../models/User');
 const Redis = require('../config/redis');
+const mongoose = require('mongoose');
 
 // Get all users (admin/hospital/bloodbank/donor) - for admin management
 async function Getallusers(req, res) {
   try {
-    const cachedUsers = await Redis.get("admin_users");
-    if (cachedUsers) {
-      const users = JSON.parse(cachedUsers);
-      return res.json(users.map(user => ({
-        id: user.id || user._id?.toString(),
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        status: user.status || 'active',
-      })));
-    }
-    const admins = await User.find({ role: { $in: ['admin', 'hospital', 'bloodbank', 'donor'] } });
-    const users = admins.map(user => ({
+    const users = await User.find({})
+      .select('_id name email role')
+      .lean();
+    res.json(users.map(user => ({
       id: user._id.toString(),
       name: user.name,
       email: user.email,
       role: user.role,
       status: 'active',
-    }));
-    await Redis.set("admin_users", JSON.stringify(users));
-    res.json(users);
+    })));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -47,7 +37,6 @@ async function Addadmin(req, res) {
       if (userExists.role !== normalizedRole) {
         userExists.role = normalizedRole;
         await userExists.save();
-        await Redis.set("admin_users", JSON.stringify(await User.find({ role: { $in: ['admin', 'hospital', 'bloodbank', 'donor'] } })));
         return res.status(200).json({ id: userExists._id.toString(), name: userExists.name, email: userExists.email, role: userExists.role, status: 'active', message: `Existing user assigned role: ${userExists.role}` });
       }
       return res.status(400).json({ message: 'User already exists' });
@@ -72,6 +61,10 @@ async function Addadmin(req, res) {
 async function Removeuser(req, res) {
   try {
     const userid = req.params.id;
+    if (!mongoose.isValidObjectId(userid)) {
+      return res.status(400).json({ message: 'A valid user ID is required' });
+    }
+
     const user = await User.findByIdAndDelete(userid);
     if (!user)
       return res.status(404).json({
@@ -92,6 +85,10 @@ async function Removeuser(req, res) {
 async function Updateuser(req, res) {
   try {
     const { name, email, role } = req.body;
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: 'A valid user ID is required' });
+    }
+
     await Redis.del("admin_users");
     const user = await User.findByIdAndUpdate(
       req.params.id,
@@ -102,7 +99,6 @@ async function Updateuser(req, res) {
       return res.status(404).json({
         message: 'User not found'
       });
-    await Redis.set("admin_users", JSON.stringify(await User.find({ role: { $in: ['admin', 'hospital', 'bloodbank', 'donor'] } })));
     return res.status(200).json({
       id: user._id.toString(),
       name: user.name,
