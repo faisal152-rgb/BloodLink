@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Droplet, User, ShieldCheck, Building2, LayoutDashboard, LogOut, Menu, X, Bell } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import * as api from '../../services/api';
 import '../../styles/donor-notifications.css';
 
@@ -11,13 +11,14 @@ const ROLE_CONFIG = {
   donor: { label: 'Donor', icon: User, color: '#6f42c1' },
 };
 
-const Navbar = ({ activeSection, setActiveSection, isLoggedIn, isAdmin, onLogout, userData, onNavItemClick }) => {
+const Navbar = ({ activeSection, setActiveSection, isLoggedIn, onLogout, userData, onNavItemClick }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationsError, setNotificationsError] = useState('');
+  const welcomeDismissalsInFlight = useRef(new Set());
 
   const role = typeof userData?.role === 'string'
     ? userData.role.trim().toLowerCase()
@@ -51,6 +52,30 @@ const Navbar = ({ activeSection, setActiveSection, isLoggedIn, isAdmin, onLogout
     setShowNotifications(willOpen);
     if (willOpen) fetchNotifications();
   };
+
+  useEffect(() => {
+    if (!showNotifications || notificationsLoading) return;
+
+    const welcomeIds = notifications
+      .filter((notification) => notification.type === 'welcome')
+      .map((notification) => notification._id || notification.id)
+      .filter((id) => id && !welcomeDismissalsInFlight.current.has(id));
+
+    welcomeIds.forEach((id) => welcomeDismissalsInFlight.current.add(id));
+
+    welcomeIds.forEach(async (id) => {
+      try {
+        await api.dismissWelcomeNotification(id);
+        setNotifications((current) =>
+          current.filter((notification) => (notification._id || notification.id) !== id)
+        );
+      } catch (error) {
+        console.error('Error dismissing viewed welcome notification:', error);
+      } finally {
+        welcomeDismissalsInFlight.current.delete(id);
+      }
+    });
+  }, [showNotifications, notificationsLoading, notifications]);
 
   const handleLogoClick = () => {
     onNavItemClick('home');
@@ -129,7 +154,7 @@ const Navbar = ({ activeSection, setActiveSection, isLoggedIn, isAdmin, onLogout
 
                   <AnimatePresence>
                     {showNotifications && (
-                      <motion.section
+                      <Motion.section
                         id="donor-notifications-panel"
                         className="donor-notifications-panel"
                         initial={{ opacity: 0, y: 8 }}
@@ -172,7 +197,7 @@ const Navbar = ({ activeSection, setActiveSection, isLoggedIn, isAdmin, onLogout
                             ))}
                           </ul>
                         )}
-                      </motion.section>
+                      </Motion.section>
                     )}
                   </AnimatePresence>
                 </div>
@@ -192,7 +217,7 @@ const Navbar = ({ activeSection, setActiveSection, isLoggedIn, isAdmin, onLogout
                   <div className="nav-avatar" style={{ background: roleConf.color }}>
                     {initials}
                   </div>
-                  <motion.div
+                  <Motion.div
                     className="online-indicator"
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ repeat: Infinity, duration: 2 }}
@@ -201,7 +226,7 @@ const Navbar = ({ activeSection, setActiveSection, isLoggedIn, isAdmin, onLogout
 
                 <AnimatePresence>
                   {showMenu && (
-                    <motion.div
+                    <Motion.div
                       initial={{ opacity: 0, y: 15, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -247,7 +272,7 @@ const Navbar = ({ activeSection, setActiveSection, isLoggedIn, isAdmin, onLogout
                       >
                         <LogOut size={18} /> Logout
                       </button>
-                    </motion.div>
+                    </Motion.div>
                   )}
                 </AnimatePresence>
               </div>
@@ -284,7 +309,7 @@ const Navbar = ({ activeSection, setActiveSection, isLoggedIn, isAdmin, onLogout
       {/* Mobile Menu Drawer */}
       <AnimatePresence>
         {mobileMenuOpen && (
-          <motion.div
+          <Motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -315,7 +340,7 @@ const Navbar = ({ activeSection, setActiveSection, isLoggedIn, isAdmin, onLogout
                 Urgent Request
               </a>
             </div>
-          </motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
     </header>
