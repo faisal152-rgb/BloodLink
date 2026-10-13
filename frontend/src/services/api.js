@@ -121,7 +121,8 @@ export const deleteLocation = (id) => api.delete(`/locations/${id}`);
 
 // Notifications
 export const getNotifications = (target) => api.get('/notifications', { params: target ? { target } : {} });
-export const markWelcomeNotificationViewed = (id) => api.post(`/notifications/${id}/viewed`);
+export const deleteNotification = (id) => api.delete(`/notifications/${id}`);
+export const deleteAllNotifications = () => api.delete('/notifications/all');
 export const sendNotification = (notificationData) =>
   api.post('/notifications/add', notificationData);
 
