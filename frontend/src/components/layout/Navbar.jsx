@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Droplet, User, ShieldCheck, Building2, LayoutDashboard, LogOut, Menu, X } from 'lucide-react';
+import { Droplet, User, ShieldCheck, Building2, LayoutDashboard, LogOut, Menu, X, Bell } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import * as api from '../../services/api';
+import '../../styles/donor-notifications.css';
 
 const ROLE_CONFIG = {
   admin: { label: 'Admin', icon: ShieldCheck, color: '#dc3545' },
@@ -12,6 +14,10 @@ const ROLE_CONFIG = {
 const Navbar = ({ activeSection, setActiveSection, isLoggedIn, isAdmin, onLogout, userData, onNavItemClick }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState('');
 
   const role = typeof userData?.role === 'string'
     ? userData.role.trim().toLowerCase()
@@ -22,6 +28,29 @@ const Navbar = ({ activeSection, setActiveSection, isLoggedIn, isAdmin, onLogout
   const userEmail = userData?.email || '';
   // initials from name
   const initials = userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+
+  const fetchNotifications = async () => {
+    setNotificationsLoading(true);
+    setNotificationsError('');
+    try {
+      const response = await api.getNotifications('donor');
+      if (!Array.isArray(response.data)) {
+        throw new Error('Unexpected notifications response.');
+      }
+      setNotifications(response.data);
+    } catch (error) {
+      setNotificationsError(error.response?.data?.message || error.message || 'Could not load notifications.');
+      console.error('Error fetching donor notifications:', error);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  const handleNotificationsClick = () => {
+    const willOpen = !showNotifications;
+    setShowNotifications(willOpen);
+    if (willOpen) fetchNotifications();
+  };
 
   const handleLogoClick = () => {
     onNavItemClick('home');
@@ -80,6 +109,74 @@ const Navbar = ({ activeSection, setActiveSection, isLoggedIn, isAdmin, onLogout
         <div className="nav-actions">
           {isLoggedIn ? (
             <>
+              {role === 'donor' && (
+                <div className="donor-notifications-wrap">
+                  <button
+                    type="button"
+                    className="donor-notifications-button"
+                    onClick={handleNotificationsClick}
+                    aria-label={`Notifications${notifications.length ? `, ${notifications.length} messages` : ''}`}
+                    aria-expanded={showNotifications}
+                    aria-controls="donor-notifications-panel"
+                  >
+                    <Bell size={21} />
+                    {notifications.length > 0 && (
+                      <span className="donor-notifications-badge">
+                        {notifications.length > 99 ? '99+' : notifications.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <AnimatePresence>
+                    {showNotifications && (
+                      <motion.section
+                        id="donor-notifications-panel"
+                        className="donor-notifications-panel"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 8 }}
+                        aria-label="Notifications"
+                      >
+                        <div className="donor-notifications-header">
+                          <h2>Notifications</h2>
+                          <button
+                            type="button"
+                            onClick={() => setShowNotifications(false)}
+                            aria-label="Close notifications"
+                          >
+                            <X size={18} />
+                          </button>
+                        </div>
+
+                        {notificationsLoading ? (
+                          <p className="donor-notifications-state" role="status">Loading notifications...</p>
+                        ) : notificationsError ? (
+                          <div className="donor-notifications-state" role="alert">
+                            <p>{notificationsError}</p>
+                            <button type="button" onClick={fetchNotifications}>Try again</button>
+                          </div>
+                        ) : notifications.length === 0 ? (
+                          <p className="donor-notifications-state">No notifications yet.</p>
+                        ) : (
+                          <ul className="donor-notifications-list">
+                            {notifications.map((notification, index) => (
+                              <li key={notification._id || notification.id || index}>
+                                <h3>{notification.title || 'BloodLink announcement'}</h3>
+                                <p>{notification.message}</p>
+                                {(notification.timestamp || notification.createdAt) && (
+                                  <time dateTime={notification.timestamp || notification.createdAt}>
+                                    {new Date(notification.timestamp || notification.createdAt).toLocaleString()}
+                                  </time>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </motion.section>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
               <a 
                 href="/request" 
                 className="nav-cta desktop-only" 
