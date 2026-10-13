@@ -121,13 +121,7 @@ export const deleteLocation = (id) => api.delete(`/locations/${id}`);
 
 // Notifications
 export const getNotifications = (target) => api.get('/notifications', { params: target ? { target } : {} });
-export const sendNotification = (notificationData) =>
-  api.post('/notifications', notificationData).catch((err) => {
-    if (err.response?.status === 404) {
-      return api.post('/notifications/add', notificationData);
-    }
-    throw err;
-  });
+export const sendNotification = (notificationData) =>api.post('/notifications/add', notificationData);
 
 // Admins
 export const getAdmins = () => api.get('/admins');
