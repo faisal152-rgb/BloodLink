@@ -5,7 +5,15 @@ const Redis = require('../config/redis');
 async function getnotifications(req, res) {
   const { title, target } = req.query;
   try {
-    if (title && Redis) {
+    const isAdminListingAll = req.user.role === 'admin' && !target;
+    const publicNotifications = target && target !== 'all'
+      ? { target: { $in: [target, 'all'] } }
+      : { target: 'all' };
+    const filter = isAdminListingAll
+      ? {}
+      : { $or: [publicNotifications, { recipient: req.user.id || req.user._id }] };
+
+    if (title && Redis && isAdminListingAll) {
       try {
         const cachedNotifications = await Redis.get(`notifications:${title}`);
         if (cachedNotifications) {
@@ -16,14 +24,9 @@ async function getnotifications(req, res) {
       }
     }
 
-    let filter = {};
-    if (target && target !== 'all') {
-      filter.target = { $in: [target, 'all'] };
-    }
-
     const notifications = await Notification.find(filter).sort({ timestamp: -1, createdAt: -1 });
 
-    if (title && Redis) {
+    if (title && Redis && isAdminListingAll) {
       try {
         await Redis.set(`notifications:${title}`, JSON.stringify(notifications));
       } catch (redisErr) {
