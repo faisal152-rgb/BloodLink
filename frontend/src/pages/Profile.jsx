@@ -5,38 +5,57 @@ import '../styles/profile.css';
 
 const ROLE_CONFIG = {
   admin:     { label: 'System Administrator', icon: ShieldCheck, color: '#dc3545' },
-  hospital:  { label: 'Hospital Staff',       icon: Building2,   color: '#0d6efd' },
+  hospital:  { label: 'Hospital Staff',             icon: Building2,   color: '#0d6efd' },
   bloodbank: { label: 'Blood Bank Manager',   icon: Droplet,     color: '#198754' },
   donor:     { label: 'Donor',                icon: User,        color: '#6f42c1' },
 };
 
 const Profile = ({ userData, onLogout }) => {
-  const [currentUserData, setCurrentUserData] = useState(userData);
+  const [currentUserData, setCurrentUserData] = useState(() => {
+    if (userData && userData.role) return userData;
+    try {
+      const stored = localStorage.getItem('bloodlinkUser');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return userData;
+  });
+
+  // Sync state if userData prop updates
+  useEffect(() => {
+    if (userData && userData.role) {
+      setCurrentUserData(userData);
+    }
+  }, [userData]);
 
   // Fetch latest user data when component mounts
   useEffect(() => {
     const fetchLatestUserData = async () => {
       try {
         const res = await api.getCurrentUser();
-        setCurrentUserData(res.data);
+        const user = res.data?.user || res.data;
+        if (user) {
+          setCurrentUserData(user);
+          localStorage.setItem('bloodlinkUser', JSON.stringify(user));
+        }
       } catch (error) {
         console.error("Error fetching latest user data:", error);
-        // Fall back to props data if fetch fails
-        setCurrentUserData(userData);
+        if (userData) {
+          setCurrentUserData(userData);
+        }
       }
     };
 
     fetchLatestUserData();
   }, []);
 
-  const role     = currentUserData?.role  || 'donor';
+  const role     = (currentUserData?.role || 'donor').toLowerCase();
   const name     = currentUserData?.name  || 'User';
   const email    = currentUserData?.email || '';
   const roleConf = ROLE_CONFIG[role] || ROLE_CONFIG.donor;
   const RoleIcon = roleConf.icon;
-  const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const initials = (name || 'U').split(' ').filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'U';
 
-  const [firstName, ...rest] = name.split(' ');
+  const [firstName, ...rest] = (name || '').split(' ');
   const lastName = rest.join(' ') || '';
 
   const [firstNameState, setFirstNameState] = useState(firstName);
@@ -46,6 +65,17 @@ const Profile = ({ userData, onLogout }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateMessage, setUpdateMessage] = useState('');
 
+  // Keep input fields synchronized whenever currentUserData updates
+  useEffect(() => {
+    if (currentUserData) {
+      const currentName = currentUserData.name || '';
+      const [fName, ...rWords] = currentName.split(' ');
+      setFirstNameState(fName || '');
+      setLastNameState(rWords.join(' ') || '');
+      setEmailState(currentUserData.email || '');
+    }
+  }, [currentUserData]);
+
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setIsUpdating(true);
@@ -54,12 +84,16 @@ const Profile = ({ userData, onLogout }) => {
     const updatedName = `${firstNameState.trim()} ${lastNameState.trim()}`.trim();
 
     try {
-      const payload = { id: currentUserData?.id, name: updatedName, email: emailState.trim() };
+      const payload = {
+        id: currentUserData?.id || currentUserData?._id,
+        name: updatedName,
+        email: emailState.trim()
+      };
       if (passwordState) {
         payload.password = passwordState;
       }
       const res = await api.updateProfile(payload);
-      const updatedUser = res.data;
+      const updatedUser = res.data?.user || res.data;
 
       // persist to localstorage and refresh local state
       setCurrentUserData(updatedUser);
