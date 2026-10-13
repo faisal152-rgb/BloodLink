@@ -8,9 +8,8 @@ const sessionModel = require('../models/session');
 const { generateOtp, getOtpHtml } = require('../utils/generateOtp');
 const redis = require('../config/redis');
 const crypto = require('crypto');
-
-
 const { Queue } = require('bullmq');
+const { sendWelcomeMessages } = require('../utils/welcome');
 const emailQueue = new Queue('emailQueue', {
   connection: redis,
 });
@@ -33,7 +32,13 @@ const resolveRoleFromEmail = (email) => {
 };
 
 // ─── Helper: send token redirect to frontend ─────────────────────────────────
-const sendTokenRedirect = (res, user) => {
+const sendTokenRedirect = async (res, user) => {
+  try {
+    await sendWelcomeMessages(user, emailQueue);
+  } catch (error) {
+    console.error('Welcome notification/email delivery failed:', error);
+  }
+
   const accesstoken = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "15m" });
   const params = new URLSearchParams({
     accesstoken,
@@ -50,86 +55,70 @@ const sendTokenRedirect = (res, user) => {
 };
 // ─── Local Register ───────────────────────────────────────────────────────────
 async function Register(req, res) {
-  try {
-    const { name, email, password, role: requestedRole } = req.body;
-    if (!name || !email || !password) {
-      return res.status(400).json({
-        status: 400,
-        message: "All fields are required",
-      });
-    }
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(409).json({
-        message: "User already exists",
-        status: "Fail",
-      });
-    }
-    const role = requestedRole || resolveRoleFromEmail(email);
-    const user = await User.create({
-      name,
-      email,
-      password,
-      role,
-      provider: "local",
-    });
-    try {
-      const otp = generateOtp();
-      await redis.del(`otp:${email}`);
-      const html = getOtpHtml(otp);
-      const otpHash = crypto
-        .createHash("sha256")
-        .update(otp)
-        .digest("hex");
-      await otpModel.deleteOne({ email });
-      await otpModel.create({
-        email: user.email,
-        user: user._id,
-        otpHash,
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-      });
-      await redis.set(`otp:${email}`, otp, "EX", 5 * 60);
-      await emailQueue.add("sendEmail", {
-        to: user.email,
-        subject: "OTP Verification",
-        text: `Your OTP is ${otp}`,
-        html,
-      });
-    } catch (err) {
-      console.error("OTP Error:", err);
-      return res.status(500).json({
-        message: "OTP Not Sent",
-        status: "Fail",
-      });
-    }
-    return res.status(201).json({
-      Message: "Registration Successful",
-      Status: "Success",
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        avatar: user.avatar,
-        hospitalName: user.hospitalName,
-        phone: user.phone,
-        verified: user.Verified,
-      },
-    });
-  } catch (err) {
-    console.error("Registration Error:", err);
-    if (err.code === 11000) {
-      return res.status(409).json({
-        message: "User already exists",
-        status: "Fail",
-      });
-    }
-    return res.status(500).json({
-      message: "Registration failed",
-      status: "Fail",
+  const { name, email, password, role: requestedRole } = req.body;
+  if (!name || !email || !password) {
+    return res.status(400).json({
+      status: 400,
+      message: "All fields are required",
     });
   }
-}
+  const userExists = await User.findOne({ email });
+  if (userExists) return res.status(200).json({
+    message: "User already exists",
+    status: "Fail",
+  });
+  const role = requestedRole || resolveRoleFromEmail(email);
+  let user;
+  try {
+    user = await User.create({ name, email, password, role, provider: 'local' });
+    const otp = generateOtp();
+    await redis.del(`otp:${email}`);
+    const html = getOtpHtml(otp);
+    const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
+    await otpModel.deleteOne({ email });
+    await otpModel.create({
+      email: user.email,
+      user: user._id,
+      otpHash,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+    })
+    await redis.set(`otp:${email}`, otp, 'EX', 5 * 60);
+    console.log(otp)
+    await emailQueue.add("sendEmail", {
+      to: user.email,
+      subject: `OTP Verification ${otp}`,
+      text: `Your OTP is ${otp}`,
+      html: html
+    });
+  }
+  catch (err) {
+    console.log(err);
+    return res.status(403).json({
+      Message: "OTP Not Sent",
+      Status: "Fail",
+    });
+  }
+  try {
+    await sendWelcomeMessages(user, emailQueue);
+  } catch (error) {
+    console.error('Welcome notification/email delivery failed:', error);
+  }
+  return res.status(201).json({
+    Message: "Registration Successfull",
+    Status: "Success",
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      avatar: user.avatar,
+      hospitalName: user.hospitalName,
+      phone: user.phone,
+      verified: user.Verified
+    }
+  });
+};
+
 // ─── Local Login ─────────────────────────────────────────────────────────────
 async function Login(req, res) {
   try {
@@ -199,6 +188,12 @@ async function Login(req, res) {
     }
 
     // Verified User -> Generate Session & Tokens
+    try {
+      await sendWelcomeMessages(user, emailQueue);
+    } catch (error) {
+      console.error('Welcome notification/email delivery failed:', error);
+    }
+
     const refreshtoken = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
     const refreshTokenHash = crypto.createHash("sha256").update(refreshtoken).digest("hex");
 
