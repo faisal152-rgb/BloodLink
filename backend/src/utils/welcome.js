@@ -28,6 +28,18 @@ Thank you for joining BloodLink. Every connection counts!
 
 — Team BloodLink 🩸`;
 
+  const notificationMessage = `Hello ${user.name || 'User'}! 👋
+
+Welcome to BloodLink — Connecting Lives, Saving Lives. ❤️
+
+Your account has been successfully created! You’re now part of a community dedicated to helping people in need of blood.
+
+🤝 Together, we can make a difference and save lives.
+
+Thank you for joining BloodLink. Every connection counts!
+
+— Team BloodLink 🩸`;
+
   const html = `<!doctype html>
 <html lang="en">
   <body style="margin:0;background:#f7f7f7;font-family:Arial,sans-serif;color:#292929">
@@ -87,7 +99,7 @@ Thank you for joining BloodLink. Every connection counts!
     recipient: user._id,
     type: 'welcome',
     title: 'Welcome to BloodLink!',
-    message: text,
+    message: notificationMessage,
     target: ['donor', 'hospital', 'bloodbank'].includes(user.role)
       ? user.role
       : 'all',
