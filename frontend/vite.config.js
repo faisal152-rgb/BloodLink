@@ -6,6 +6,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true, // Expose to network (generates Network URL for phone/device access)
+    proxy: {
+      '/api': {
+        target: 'https://bloodlink-7xa0.onrender.com',
+        changeOrigin: true,
+      },
+    },
   },
 })
 
