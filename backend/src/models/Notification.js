@@ -9,6 +9,11 @@ const notificationSchema = new mongoose.Schema({
      type: String, 
      required: true 
     },
+  target: {
+     type: String,
+     enum: ['all', 'donor', 'hospital', 'bloodbank'],
+     default: 'all'
+    },
   status: {
      type: String, 
      enum: ['sent', 'pending', 'error'],
