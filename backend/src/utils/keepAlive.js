@@ -1,20 +1,20 @@
+let keepAliveTimer = null;
 
-
-const startKeepAlive = () => {
+export const startKeepAlive = () => {
     const url = process.env.SERVER_URL;
 
     if (!url) {
         console.log('ℹ️  Keep-Alive: No SERVER_URL set.');
-        return;
+        return null;
     }
 
-    // Ping the root endpoint directly: "/"
+    // Ping the target URL
     const targetUrl = url;
     const INTERVAL_MS = 10 * 60 * 1000; // 10 minutes (600,000 ms)
 
     console.log(`⏰ Keep-Alive scheduled: Pinging ${targetUrl} every 10 minutes.`);
 
-    setInterval(async () => {
+    keepAliveTimer = setInterval(async () => {
         try {
             const response = await fetch(targetUrl);
             if (response.ok) {
@@ -26,6 +26,16 @@ const startKeepAlive = () => {
             console.error(`[Keep-Alive] Ping error:`, error.message);
         }
     }, INTERVAL_MS);
+
+    return keepAliveTimer;
 };
 
-module.exports = startKeepAlive;
+export const stopKeepAlive = () => {
+    if (keepAliveTimer) {
+        clearInterval(keepAliveTimer);
+        keepAliveTimer = null;
+        console.log('[Keep-Alive] Stopped.');
+    }
+};
+
+export default startKeepAlive;
