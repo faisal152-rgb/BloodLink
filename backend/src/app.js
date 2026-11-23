@@ -10,7 +10,7 @@ const redisClient = require('./config/redis');
 const cookieParser = require('cookie-parser');
 const passport = require('./services/passport');
 const connectDB = require('./config/db');
-const startKeepAlive = require('./utils/keepAlive');
+const { startKeepAlive, stopKeepAlive } = require('./utils/keepAlive');
 require('./utils/emailworker');
 // Models
 const User = require('./models/User');
