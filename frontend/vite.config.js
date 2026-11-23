@@ -8,7 +8,7 @@ export default defineConfig({
     host: true, // Expose to network (generates Network URL for phone/device access)
     proxy: {
       '/api': {
-        target: 'https://bloodlink-7xa0.onrender.com',
+        target: 'https://bloodlink-oo9q.onrender.com',
         changeOrigin: true,
       },
     },
